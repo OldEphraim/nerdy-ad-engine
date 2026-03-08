@@ -72,7 +72,7 @@ export function buildGenerationPrompt(brief: AdBrief): string {
 
   return `Write a Facebook/Instagram ad for Varsity Tutors SAT prep.
 
-AUDIENCE: ${brief.audience.replace(/_/g, ' ')}
+AUDIENCE: ${brief.audience.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase())}
 ${audienceDesc}
 
 CAMPAIGN GOAL: ${brief.goal}
@@ -120,5 +120,5 @@ Previous ad for reference (DO NOT copy — rewrite from scratch):
 
 SPECIFIC INSTRUCTION: ${interventionStrategy}
 
-Generate an improved version. Keep what worked, fix what didn't. JSON only.`;
+Generate an improved version. Rewrite completely — the previous version is reference only, not a starting point. JSON only.`;
 }

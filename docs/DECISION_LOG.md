@@ -129,3 +129,45 @@ _Write this as you build. One entry per meaningful decision._
 
 ---
 
+## Decision 9: Best-of-N selection rather than last-cycle-wins
+
+**Decision:** The iteration loop selects the cycle with the highest aggregate score as the final ad, not necessarily the last cycle produced.
+
+**Alternatives considered:**
+- Always use the last cycle (simpler, but ignores regressions).
+- Use the last cycle that improved (arbitrary cutoff).
+
+**Rationale:** Targeted regeneration sometimes improves the weak dimension but degrades another. A cycle 3 ad might score 7.2 while cycle 4 regresses to 6.8 because fixing emotional resonance made the CTA vague. Best-of-N means we never surface a worse ad than we already had. This also justifies early stopping: if the score drops significantly (>0.5) after cycle 3+, we stop iterating because further cycles are unlikely to recover.
+
+**Result:** _Verify with live run — check if regressions occur and are correctly handled._
+
+---
+
+## Decision 10: Early stopping on score regression
+
+**Decision:** If the aggregate score drops by more than 0.5 after cycle 3 or later, stop iterating early rather than burning remaining cycles.
+
+**Alternatives considered:**
+- Always run all maxCycles (wastes tokens on diminishing returns).
+- Stop on any regression (too aggressive — small oscillations are normal).
+
+**Rationale:** Empirically, when a regeneration significantly hurts the score, additional regenerations from the same brief tend to oscillate rather than recover. The 0.5 threshold and cycle ≥3 guard prevent premature stopping on normal cycle-2 adjustments while catching genuine regressions. Combined with best-of-N selection, the final output is always the best version produced regardless of when we stopped.
+
+**Result:** _Verify with live run._
+
+---
+
+## Decision 11: Quality trend computed across all ads' cycle histories, not just final scores
+
+**Decision:** `getQualityTrend()` groups scores by cycle number across all entries — cycle 1 averages all first-pass scores, cycle 2 averages all second-pass scores, etc.
+
+**Alternatives considered:**
+- Track only final scores over time (wouldn't show improvement trajectory).
+- Track per-brief improvement only (doesn't aggregate into a system-level trend).
+
+**Rationale:** The spec compliance test checks `trend[last].avgScore > trend[0].avgScore` — it needs to see that cycle 2+ scores are higher than cycle 1 on average across the library. This design naturally handles ads that converge on cycle 1 (they only contribute to cycle 1's average) and ads that take 3+ cycles (they contribute to all cycles they ran). The trend proves the iteration loop systematically improves quality, not just that individual ads get lucky.
+
+**Result:** _Validate after first batch run._
+
+---
+

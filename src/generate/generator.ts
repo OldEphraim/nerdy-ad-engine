@@ -58,12 +58,19 @@ function parseGeneratorResponse(
   // Strip markdown fences if the model wraps output despite instructions
   const cleaned = text.replace(/^```(?:json)?\s*/i, '').replace(/\s*```$/i, '').trim();
 
-  const parsed = JSON.parse(cleaned) as {
+  let parsed: {
     primaryText?: string;
     headline?: string;
     description?: string;
     ctaButton?: string;
   };
+  try {
+    parsed = JSON.parse(cleaned);
+  } catch {
+    throw new Error(
+      `Generator returned malformed JSON. First 200 chars: ${cleaned.slice(0, 200)}`
+    );
+  }
 
   if (!parsed.primaryText || !parsed.headline || !parsed.description || !parsed.ctaButton) {
     throw new Error(`Generator returned incomplete ad: ${JSON.stringify(parsed)}`);
