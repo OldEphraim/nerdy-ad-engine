@@ -67,3 +67,65 @@ _Write this as you build. One entry per meaningful decision._
 
 ---
 
+## Decision 5: Few-shot examples in generator system prompt (3 good + 1 bad with annotation)
+
+**Decision:** Include 3 high-quality example ads and 1 annotated bad example directly in the generator system prompt.
+
+**Alternatives considered:**
+- Zero-shot (rely on instructions alone).
+- More examples (5+) for even stronger anchoring.
+- Chain-of-thought: have the model reason about the brief before producing copy.
+
+**Rationale:** Few-shot examples are the single most effective prompt engineering technique for output quality and format compliance. Three examples cover the diversity we need (one per audience segment) while staying well under the context window ceiling for Haiku. The bad example with explicit "WHY IT FAILS" annotation teaches the model what to avoid — research shows negative examples improve discrimination more than additional positive ones. Chain-of-thought was rejected because it adds output tokens we'd be paying for (rationale text before the JSON), and the generator's job is production, not reasoning — that's the evaluator's role. The examples are hand-crafted to embody the patterns from the spec: specific numbers, emotional hooks, authentic voice, matched CTAs.
+
+**Result:** _Validate on first generation run — check if output quality and JSON compliance are consistent._
+
+---
+
+## Decision 6: Evaluator prompt design — rubric anchoring at 4 score levels per dimension
+
+**Decision:** The evaluator system prompt includes explicit score anchors at levels 1, 5, 7, and 10 for each dimension, rather than just 1 and 10.
+
+**Alternatives considered:**
+- Only 1 and 10 anchors (as in the CLAUDE.md spec).
+- Full 1-10 rubric for each dimension (too verbose, risks context dilution).
+- Separate evaluator calls per dimension (more precise but 5x cost).
+
+**Rationale:** LLM-as-judge calibration research shows that models compress toward the middle of a scale when anchors are sparse. Adding the 5 and 7 anchors gives the evaluator concrete reference points for "mediocre but functional" (5) versus "publishable" (7). This directly supports the 7.0 threshold — the evaluator needs to know exactly what 7 means, not just interpolate between 1 and 10. The 7-anchor is the most important since it's the pass/fail boundary. Four anchors per dimension × 5 dimensions = 20 anchor points, which fits comfortably in the system prompt without overwhelming the model.
+
+**Result:** _Validate with calibration run — good ads should score ≥8, bad ads ≤5._
+
+---
+
+## Decision 7: Evaluator temperature 0, generator temperature 0.7
+
+**Decision:** Evaluator uses `temperature: 0` for deterministic scoring. Generator uses `temperature: 0.7` for creative variance.
+
+**Alternatives considered:**
+- Both at 0 (no creative variance in generation — would produce nearly identical ads per brief).
+- Generator at 1.0 (more creative but higher risk of format violations and incoherence).
+- Evaluator at 0.1 (slight variance to avoid degenerate scoring patterns).
+
+**Rationale:** The evaluator MUST be deterministic for the iteration loop to work — if the same ad gets scored 6.5 on one run and 7.5 on the next, the feedback signal is noise. `temperature: 0` is the closest we get since Anthropic has no `seed` parameter. The generator needs enough variance to produce diverse ads from the same brief (we run 3+ per brief), but 0.7 keeps it structurally reliable — at 1.0 I'd expect more JSON parsing failures and off-brand output. This is a well-established best practice: deterministic evaluation, stochastic generation.
+
+**Note on Anthropic determinism:** Even at `temperature: 0`, the Anthropic API does not guarantee bitwise-identical outputs across calls. The spec test allows ±0.1 tolerance on aggregate scores for this reason. This is a known limitation documented in LIMITATIONS.md.
+
+**Result:** _Test with the determinism spec test — two evaluations of the same ad should be within ±0.1._
+
+---
+
+## Decision 8: Regeneration prompt includes previous ad as reference + targeted dimension fix
+
+**Decision:** When an ad fails the quality threshold, the regeneration prompt includes (a) the original brief context, (b) the previous ad text as reference, (c) the weakest dimension name, and (d) a specific improvement strategy. The model is told to "rewrite from scratch" — not edit.
+
+**Alternatives considered:**
+- Send only the improvement strategy without showing the previous ad (model has no context on what to fix).
+- Send the previous ad and ask for a "minor edit" (risks minimal changes that don't move the score).
+- Send all dimension scores and rationales (information overload for the generator).
+
+**Rationale:** Showing the previous ad gives the model a concrete reference for what didn't work, but instructing "rewrite from scratch" prevents lazy one-word edits that don't actually improve the score. Only the weakest dimension gets an intervention — this prevents the model from trying to optimize 5 things at once, which typically results in optimizing none. The improvement strategies in `strategies.ts` are hand-crafted per dimension with specific, actionable instructions (not just "make it better").
+
+**Result:** _Track improvement deltas per dimension after iteration runs._
+
+---
+
