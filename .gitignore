@@ -1,0 +1,7 @@
+node_modules/
+dist/
+.env
+data/ads.json
+data/ads.csv
+*.js.map
+.DS_Store
