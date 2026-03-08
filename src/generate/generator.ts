@@ -6,7 +6,7 @@ import { randomUUID } from 'crypto';
 import type { AdBrief, GeneratedAd } from '../types.js';
 import { GENERATOR_SYSTEM_PROMPT, buildGenerationPrompt, buildRegenerationPrompt } from './prompts.js';
 
-const client = new Anthropic(); // reads ANTHROPIC_API_KEY from env
+const client = new Anthropic({ maxRetries: 5 }); // auto-retries on 429 with backoff
 
 export async function generateAd(
   brief: AdBrief,

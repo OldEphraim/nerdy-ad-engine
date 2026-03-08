@@ -19,17 +19,17 @@ async function main() {
   console.log(`Brief: ${testBrief.id}`);
   console.log(`Audience: ${testBrief.audience}, Goal: ${testBrief.goal}, Hook: ${testBrief.hookType}\n`);
 
-  const result = await iterateToQuality(testBrief, 3);
+  const { record, finalAd, finalEvaluation } = await iterateToQuality(testBrief, 3);
 
   console.log('\n=== Results ===');
-  console.log(`Converged: ${result.converged}`);
-  console.log(`Cycles run: ${result.cycles.length}`);
-  console.log(`Final score: ${result.finalEvaluation?.aggregateScore}`);
-  console.log(`Total tokens: ${result.totalInputTokens} in / ${result.totalOutputTokens} out`);
-  console.log(`Estimated cost: $${result.estimatedCostUsd.toFixed(4)}`);
+  console.log(`Converged: ${record.converged}`);
+  console.log(`Cycles run: ${record.cycles.length}`);
+  console.log(`Final score: ${finalEvaluation.aggregateScore}`);
+  console.log(`Total tokens: ${record.totalInputTokens} in / ${record.totalOutputTokens} out`);
+  console.log(`Estimated cost: $${record.estimatedCostUsd.toFixed(4)}`);
 
   console.log('\n--- Per-cycle breakdown ---');
-  for (const cycle of result.cycles) {
+  for (const cycle of record.cycles) {
     console.log(`  Cycle ${cycle.cycle}: aggregate=${cycle.evaluation.aggregateScore} delta=${cycle.improvementDelta}`);
     for (const s of cycle.evaluation.scores) {
       console.log(`    ${s.dimension}: ${s.score} (${s.confidence}) — ${s.rationale.slice(0, 80)}`);
@@ -39,13 +39,11 @@ async function main() {
     }
   }
 
-  if (result.finalAd) {
-    console.log('\n--- Final Ad ---');
-    console.log(`Primary: ${result.finalAd.primaryText}`);
-    console.log(`Headline: ${result.finalAd.headline}`);
-    console.log(`Description: ${result.finalAd.description}`);
-    console.log(`CTA: ${result.finalAd.ctaButton}`);
-  }
+  console.log('\n--- Final Ad ---');
+  console.log(`Primary: ${finalAd.primaryText}`);
+  console.log(`Headline: ${finalAd.headline}`);
+  console.log(`Description: ${finalAd.description}`);
+  console.log(`CTA: ${finalAd.ctaButton}`);
 }
 
 main().catch(console.error);

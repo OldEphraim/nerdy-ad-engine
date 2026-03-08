@@ -14,7 +14,7 @@ import {
 } from '../types.js';
 import { EVALUATOR_SYSTEM_PROMPT, buildEvaluationPrompt } from './dimensions.js';
 
-const client = new Anthropic();
+const client = new Anthropic({ maxRetries: 5 });
 
 export async function evaluateAd(ad: GeneratedAd): Promise<EvaluationResult> {
   const response = await client.messages.create({

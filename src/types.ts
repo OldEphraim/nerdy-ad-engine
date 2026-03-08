@@ -60,8 +60,6 @@ export interface IterationCycle {
 export interface IterationRecord {
   briefId: string;
   cycles: IterationCycle[];
-  finalAd: GeneratedAd | null;
-  finalEvaluation: EvaluationResult | null;
   converged: boolean;
   totalInputTokens: number;
   totalOutputTokens: number;
@@ -76,7 +74,7 @@ export interface AdLibraryEntry {
 
 // ── Constants ─────────────────────────────────────────────────────────────
 
-export const QUALITY_THRESHOLD = 7.0;
+export const QUALITY_THRESHOLD = parseFloat(process.env['QUALITY_THRESHOLD'] ?? '7.0');
 
 export const DIMENSION_NAMES = [
   'clarity', 'value_proposition', 'call_to_action', 'brand_voice', 'emotional_resonance',

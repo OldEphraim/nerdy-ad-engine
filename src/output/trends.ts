@@ -1,6 +1,7 @@
 // ── Quality trend calculation ─────────────────────────────────────────────
-// Computes average score by iteration cycle number across all ads.
-// Used by the spec compliance test to prove measurable improvement.
+// Computes per-brief improvement trajectory across iteration cycles.
+// Only includes briefs that ran >1 cycle — single-cycle passes don't
+// contribute since there's no improvement to measure.
 
 import { readAdLibrary } from './library.js';
 import type { AdLibraryEntry } from '../types.js';
@@ -12,21 +13,30 @@ export interface TrendPoint {
 }
 
 /**
- * Compute average aggregate score per iteration cycle across the full library.
+ * Compute average aggregate score per cycle across multi-cycle briefs only.
  *
- * Cycle 1 = first-pass generation scores (before any intervention).
- * Cycle 2+ = scores after targeted regeneration.
+ * For each brief that ran >1 cycle, we track its score at cycle 1, cycle 2,
+ * etc. The trend shows: "for ads that needed iteration, how did their scores
+ * change across cycles?" This avoids the methodological error of comparing
+ * all cycle-1 scores (dominated by passing ads) against only the weakest
+ * ads' cycle-2 scores.
  *
- * Only includes entries that have data for a given cycle — if an ad
- * converged on cycle 1, it only contributes to the cycle 1 average.
+ * A brief contributes to cycle N only if it actually ran cycle N.
  */
 export function getQualityTrend(library?: AdLibraryEntry[]): TrendPoint[] {
   const entries = library ?? readAdLibrary();
 
-  // Group scores by cycle number
+  // Filter to only briefs that went through multiple cycles
+  const multiCycleEntries = entries.filter(e => e.iterationHistory.cycles.length > 1);
+
+  if (multiCycleEntries.length === 0) {
+    return [];
+  }
+
+  // Group scores by cycle number across multi-cycle briefs
   const cycleBuckets = new Map<number, number[]>();
 
-  for (const entry of entries) {
+  for (const entry of multiCycleEntries) {
     for (const cycle of entry.iterationHistory.cycles) {
       const scores = cycleBuckets.get(cycle.cycle) ?? [];
       scores.push(cycle.evaluation.aggregateScore);

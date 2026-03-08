@@ -3,10 +3,18 @@
 
 import type {
   AdBrief,
+  GeneratedAd,
+  EvaluationResult,
   IterationCycle,
   IterationRecord,
 } from '../types.js';
 import { QUALITY_THRESHOLD, estimateCost } from '../types.js';
+
+export interface IterationResult {
+  record: IterationRecord;
+  finalAd: GeneratedAd;
+  finalEvaluation: EvaluationResult;
+}
 import { generateAd, regenerateAd } from '../generate/generator.js';
 import { evaluateAd } from '../evaluate/evaluator.js';
 import { getStrategy } from './strategies.js';
@@ -14,7 +22,7 @@ import { getStrategy } from './strategies.js';
 export async function iterateToQuality(
   brief: AdBrief,
   maxCycles: number = parseInt(process.env['MAX_ITERATIONS'] ?? '5', 10),
-): Promise<IterationRecord> {
+): Promise<IterationResult> {
   const cycles: IterationCycle[] = [];
   let totalInputTokens = 0;
   let totalOutputTokens = 0;
@@ -96,14 +104,16 @@ export async function iterateToQuality(
   const best = selectBestCycle(cycles);
 
   return {
-    briefId: brief.id,
-    cycles,
+    record: {
+      briefId: brief.id,
+      cycles,
+      converged: best.evaluation.passesThreshold,
+      totalInputTokens,
+      totalOutputTokens,
+      estimatedCostUsd: estimateCost(totalInputTokens, totalOutputTokens),
+    },
     finalAd: best.ad,
     finalEvaluation: best.evaluation,
-    converged: best.evaluation.passesThreshold,
-    totalInputTokens,
-    totalOutputTokens,
-    estimatedCostUsd: estimateCost(totalInputTokens, totalOutputTokens),
   };
 }
 
