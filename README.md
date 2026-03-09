@@ -14,7 +14,9 @@ Built for the Nerdy hiring partner project at Gauntlet AI.
 4. **Selects** the best-scoring cycle (not the last), so regressions never surface as final output
 5. **Surfaces** only ads scoring ≥ 7.0/10 aggregate as publishable
 
-The pipeline costs approximately **$0.004–0.005 per ad** using Claude Haiku.
+The v1 text pipeline costs approximately **$0.004–0.005 per ad** using Claude Haiku.
+
+V2 adds a three-stage image pipeline after each text ad passes: **image prompt generation** (Claude Haiku derives a scene description from the ad copy) → **image generation** (fal.ai Flux Schnell, 2 variants with different seeds) → **visual evaluation** (Claude Sonnet vision scores each variant on 3 dimensions) → **A/B selection** (higher-scoring variant wins). The combined v2 cost is ~$0.019/ad across 4 models.
 
 ---
 
@@ -57,6 +59,7 @@ ad-engine/
 ├── dashboard/               # Next.js app: ad library + trend visualization
 ├── data/
 │   ├── ads.json             # Generated library (gitignored)
+│   ├── images/              # Generated images (gitignored — run pnpm generate to recreate)
 │   └── reference-ads.json  # Competitor ads from Meta Ad Library
 └── docs/
     ├── DECISION_LOG.md      # Live engineering decisions (12+ entries)
@@ -72,6 +75,7 @@ ad-engine/
 - Node.js 18+
 - pnpm
 - Anthropic API key with credits
+- fal.ai API key (v2 image generation) — get one at [fal.ai/dashboard](https://fal.ai/dashboard)
 
 ### Install
 
@@ -85,7 +89,7 @@ pnpm install
 
 ```bash
 cp .env.example .env
-# Add your ANTHROPIC_API_KEY to .env
+# Add your ANTHROPIC_API_KEY and FAL_KEY to .env
 ```
 
 ### Run
@@ -169,6 +173,19 @@ All costs use Claude Haiku pricing: $0.80/1M input tokens, $4.00/1M output token
 - At threshold 7.0, the generator prompt is strong enough that nearly every ad passes on the first cycle. Each ad costs ~2 API calls (one generate, one evaluate) at ~$0.004 total.
 - At threshold 8.5, most ads run the full 5-cycle loop. Cost per brief jumps ~5x ($0.023 vs $0.005) because each cycle adds 2 more API calls (regenerate + re-evaluate). Pass rate drops to 12% because `call_to_action` scores cap at 6-7 for awareness ads (the spec mandates "Learn More" as the CTA).
 - The 8.5 run's value was not producing ads — it was stress-testing the iteration loop and generating multi-cycle data for the quality trend chart.
+
+### V2 Cost Breakdown (per ad)
+
+V2 adds an image layer after text passes. The cost breakdown per ad:
+
+| Component | Model | Cost/ad |
+|---|---|---|
+| Text pipeline (generate + evaluate + iterate) | Claude Haiku | ~$0.005 |
+| Image generation (2 variants × $0.003) | fal.ai Flux Schnell | ~$0.006 |
+| Visual evaluation (2 variants scored) | Claude Sonnet (vision) | ~$0.008 |
+| **V2 total** | | **~$0.019** |
+
+V2 is approximately 4x the cost of v1 per ad. The image layer accounts for ~75% of the increase, split roughly evenly between generation and visual evaluation. Sonnet's vision capability is more expensive than Haiku but necessary for nuanced brand assessment (see Decision 15 in `DECISION_LOG.md`).
 
 ---
 

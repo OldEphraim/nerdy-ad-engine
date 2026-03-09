@@ -3,5 +3,8 @@ dist/
 .env
 data/ads.json
 data/ads.csv
+data/images/
+!data/images/showcase/
+!data/images/showcase/.gitkeep
 *.js.map
 .DS_Store

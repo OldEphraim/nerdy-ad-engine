@@ -2,7 +2,8 @@
 // System prompt uses few-shot examples to anchor quality expectations.
 // User prompt injects brief-specific context (audience, goal, hook type).
 
-import type { AdBrief } from '../types.js';
+import Anthropic from '@anthropic-ai/sdk';
+import type { AdBrief, GeneratedAd } from '../types.js';
 import { AUDIENCE_DESCRIPTIONS } from './briefs.js';
 
 export const GENERATOR_SYSTEM_PROMPT = `You are an expert Facebook/Instagram ad copywriter for Varsity Tutors, the leading SAT prep brand by Nerdy.
@@ -121,4 +122,57 @@ Previous ad for reference (DO NOT copy — rewrite from scratch):
 SPECIFIC INSTRUCTION: ${interventionStrategy}
 
 Generate an improved version. Rewrite completely — the previous version is reference only, not a starting point. JSON only.`;
+}
+
+// ── V2: Image Prompt Generation ─────────────────────────────────────────────
+
+const IMAGE_PROMPT_SYSTEM = `You are an expert visual creative director specializing in Facebook/Instagram ad photography for Varsity Tutors, a premium SAT prep brand.
+
+Your job: Given ad copy and audience context, write a single descriptive paragraph that will be used as a prompt for an AI image generator (Flux Schnell). The output image will appear as the creative in a Facebook ad at 1200x628px (landscape, 1.91:1 ratio).
+
+STRICT RULES:
+- NEVER include text, logos, words, letters, numbers, or watermarks in the scene description
+- Facebook renders the ad copy as an overlay — the image must work WITHOUT any text
+- Describe a PHOTOGRAPH, not an illustration or graphic design
+- Authentic UGC style — looks like a real candid photo taken on a good phone camera, not a stock image
+- Warm, realistic lighting; natural environments; aspirational but not staged or overly polished
+- Avoid stock photo clichés: no generic handshakes, no people staring blankly at laptops, no staged group high-fives
+- SAT prep context: students studying, parent/child interactions, campus scenes, library moments, celebration after good results
+- The scene should evoke the EMOTION of the ad copy — if the copy is about anxiety, show tension; if about success, show celebration
+- Describe specific visual details: lighting direction, depth of field, color palette, subject positioning
+- Landscape composition (wider than tall) — important for 1.91:1 ratio
+
+OUTPUT: A single descriptive paragraph. No JSON, no bullet points, no preamble. Just the scene description.`;
+
+export async function buildImagePrompt(ad: GeneratedAd, brief: AdBrief): Promise<string> {
+  const client = new Anthropic();
+  const model = process.env['GENERATOR_MODEL'] ?? 'claude-haiku-4-5';
+  const audienceDesc = AUDIENCE_DESCRIPTIONS[brief.audience];
+
+  const userPrompt = `Write an image prompt for this Facebook ad:
+
+AD COPY:
+- Primary text: "${ad.primaryText}"
+- Headline: "${ad.headline}"
+
+AUDIENCE: ${brief.audience.replace(/_/g, ' ')} — ${audienceDesc}
+CAMPAIGN GOAL: ${brief.goal}
+HOOK TYPE: ${brief.hookType ?? 'general'}
+
+Describe the photo scene now.`;
+
+  const response = await client.messages.create({
+    model,
+    max_tokens: 300,
+    temperature: 0.7,
+    system: IMAGE_PROMPT_SYSTEM,
+    messages: [{ role: 'user', content: userPrompt }],
+  });
+
+  const block = response.content[0];
+  if (!block || block.type !== 'text') {
+    throw new Error('Unexpected response type from image prompt generation');
+  }
+
+  return block.text.trim();
 }
