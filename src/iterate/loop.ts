@@ -81,7 +81,7 @@ export async function iterateToQuality(
       ad: improvedAd,
       evaluation: improvedEval,
       improvementDelta: Math.round(delta * 10) / 10,
-      interventionUsed: `Targeted ${weakDim}: ${strategy.slice(0, 80)}...`,
+      interventionUsed: `Targeted ${weakDim.replace(/_/g, ' ')}: ${strategy}`,
     });
 
     console.log(

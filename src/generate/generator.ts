@@ -47,7 +47,7 @@ export async function regenerateAd(
   return parseGeneratorResponse(response, brief, iterationCycle);
 }
 
-function parseGeneratorResponse(
+export function parseGeneratorResponse(
   response: Anthropic.Message,
   brief: AdBrief,
   iterationCycle: number,

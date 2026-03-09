@@ -96,10 +96,22 @@ pnpm generate
 
 # Start the dashboard
 pnpm dashboard
-
-# Run tests
-pnpm test
 ```
+
+---
+
+## Testing
+
+```bash
+pnpm test              # Run all 41 tests
+pnpm test:coverage     # Run with coverage report
+```
+
+The test suite covers three layers:
+
+- **Unit tests** — brief generation, cost estimation, quality trend calculation, JSON parsing edge cases (markdown fences, missing fields, malformed output)
+- **Spec compliance** — reads from `data/ads.json` and asserts the library meets all spec requirements: ≥50 ads, all 5 dimensions scored, scores within 1–10, aggregate matches weighted sum, at least one multi-cycle ad, trend shows improvement
+- **Architecture** — verifies offer rotation across runs of the same brief, all 24 base brief combinations represented
 
 ---
 
@@ -138,7 +150,7 @@ pnpm dashboard
 # Opens at http://localhost:3000
 ```
 
-- **Ad Library** (`/`): Full table of passing ads, sortable by score. Blue for ≥8.0, orange for 7.0–7.9.
+- **Ad Library** (`/`): Full table of passing ads, sortable by score. Dimension bars use green for ≥8.0, orange for 7.0–7.9, red for <7.0.
 - **Trends** (`/trends`): Line chart showing average score by iteration cycle — visual proof the loop improves quality.
 - **Ad Detail**: Click any row for full copy, per-dimension scores with evaluator rationale, and intervention history.
 
@@ -146,12 +158,17 @@ pnpm dashboard
 
 ## Cost
 
-| Run type | Briefs | Avg cycles | Total cost |
-|---|---|---|---|
-| Standard (threshold 7.0) | 74 | 1.03 | ~$0.34 |
-| Calibration (threshold 8.5) | 75 | ~4.2 | ~$1.80 |
+All costs use Claude Haiku pricing: $0.80/1M input tokens, $4.00/1M output tokens.
 
-Cost per passing ad at threshold 7.0: **~$0.0046**
+| Run type | Briefs | Pass rate | Avg cycles/brief | Total cost | Cost/passing ad |
+|---|---|---|---|---|---|
+| Standard (threshold 7.0) | 75 | 100% | 1.03 | $0.34 | $0.0046 |
+| Calibration (threshold 8.5) | 75 | 12% | 4.5 | $1.55 | $0.17 |
+
+**What the numbers mean:**
+- At threshold 7.0, the generator prompt is strong enough that nearly every ad passes on the first cycle. Each ad costs ~2 API calls (one generate, one evaluate) at ~$0.004 total.
+- At threshold 8.5, most ads run the full 5-cycle loop. Cost per brief jumps ~5x ($0.023 vs $0.005) because each cycle adds 2 more API calls (regenerate + re-evaluate). Pass rate drops to 12% because `call_to_action` scores cap at 6-7 for awareness ads (the spec mandates "Learn More" as the CTA).
+- The 8.5 run's value was not producing ads — it was stress-testing the iteration loop and generating multi-cycle data for the quality trend chart.
 
 ---
 

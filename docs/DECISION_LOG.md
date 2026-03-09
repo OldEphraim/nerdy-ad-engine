@@ -214,3 +214,18 @@ Raising to 8.5 forces most ads through the full 5-cycle iteration, generating ri
 
 ---
 
+## Decision 13: Dashboard run selector with named run files
+
+**Decision:** Added a run selector dropdown to the dashboard header. The API route accepts a `?run=` query parameter to load from `data/runs/{name}.json` instead of `data/ads.json`. Both the Ad Library and Quality Trends pages re-fetch when the run changes.
+
+**Alternatives considered:**
+- A toggle between "latest" and a fixed set of named runs (less flexible).
+- A file upload UI (overkill for a dev dashboard).
+- Database-backed run storage (unnecessary complexity for JSON-first pipeline).
+
+**Rationale:** Named run files in `data/runs/` let us preserve and compare calibration runs (8.5 threshold) against production runs (7.0 threshold) without overwriting data. The dropdown auto-discovers available runs from the filesystem, so adding a new run just means copying the JSON file. A React context (`RunProvider`) shares the selected run across pages so the nav dropdown, Ad Library, and Trends chart all stay in sync. The API also computes per-dimension averages and returns `dimAverages` sorted ascending — the weakest dimension appears first with a red highlight.
+
+**Result:** Production run stored as `data/runs/production-7.0.json`, calibration run regenerated as `data/runs/calibration-8.5.json`.
+
+---
+
