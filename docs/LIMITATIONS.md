@@ -46,3 +46,32 @@ without brand-specific references — but scores on these dimensions should stil
 as directional rather than absolute.
 
 ---
+
+## 3. Visual engagement is the consistent ceiling dimension for images
+
+Across the full 75-ad v2 run, visual engagement averaged 7.3 — the lowest of the three
+visual dimensions and the weakest dimension in the entire combined pipeline. Brand consistency
+averaged 7.9 and text-image coherence averaged 9.0. The pattern is consistent: Flux Schnell
+reliably generates warm, authentic scenes that feel on-brand and reinforce the copy, but the
+compositions are rarely scroll-stopping. The "two people studying at a table" archetype recurs
+across audiences and hook types — competent but not distinctive. Improving visual engagement
+would require either more specific visual direction in the image prompt (e.g., specifying
+unusual angles, high-contrast lighting, or unexpected compositions) or a model better suited
+to editorial-style photography. This is a known limitation of the current image prompt
+strategy rather than a model quality ceiling.
+
+---
+
+## 4. Quality trend data is thin at 7.0 threshold
+
+The quality trend visualization requires multi-cycle briefs to show improvement. At the 7.0
+production threshold, only 1 of 75 briefs required more than 1 iteration cycle — producing
+a trend with n=1 at each data point, which is statistically meaningless. The trend is
+meaningful only when viewing the 8.5-threshold calibration run (where n=63–69 per cycle).
+This is an inherent tension: the threshold that produces a useful ad library (7.0) is too
+easy for the iteration loop to activate, while the threshold that stresses the iteration loop
+(8.5) produces a library with only 12% pass rate. The calibration run exists specifically to
+address this — it demonstrates that the iteration machinery works even though the production
+threshold doesn't require it.
+
+---

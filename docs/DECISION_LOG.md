@@ -6,6 +6,11 @@ _Write this as you build. One entry per meaningful decision._
 > will contradict earlier ones — that's intentional. When a decision is reversed, a new
 > entry is added explaining why rather than editing the old one. The history of reasoning
 > matters as much as the final outcome.
+>
+> **On Result fields:** Decisions 1–13 were written during v1 development. Decisions 14–25
+> were written before v2 implementation began (pre-committed rationale). All Result fields
+> were filled in retrospectively after the full v2 production run completed. This is noted
+> here rather than per-entry to avoid cluttering individual entries with metadata.
 
 ## Template
 **Decision:** What you chose
@@ -23,7 +28,7 @@ _Write this as you build. One entry per meaningful decision._
 
 **Rationale:** Gemini's free tier enforces `limit: 0` on newer models until a billing account is linked. Google Cloud's billing activation returned a persistent `OR_BACR2_44` error across multiple browsers, blocking setup entirely. Rather than lose build time debugging a billing wall two days before deadline, I switched to the Anthropic API where I already have a verified key and production experience (prior Gauntlet projects: AgentForge, CollabBoard, LegacyLens). Haiku is the cost/speed equivalent of Gemini Flash — fast, cheap, strong instruction-following — so the tradeoff is zero on quality and positive on time. The spec is model-agnostic at its core; the evaluation criteria reward system design and iteration quality, not model choice.
 
-**Result:** _Fill in after run — note actual cost per ad and any quality ceiling issues._
+**Result:** Validated. Production run: 75/75 ads passing at 7.0 threshold, $0.0046/ad ($0.34 total for text pipeline). No quality ceiling issues at 7.0 — the few-shot prompt produces strong output on cycle 1. CTA is the consistent floor dimension (6/10 for awareness ads) but does not prevent passing. Haiku proved to be an excellent choice: fast, reliable JSON output, zero parsing failures across 150 API calls.
 
 ---
 
@@ -37,7 +42,7 @@ _Write this as you build. One entry per meaningful decision._
 
 **Rationale:** Starting with equal weights is the principled default — it avoids baking in assumptions about which dimensions matter more before we have any calibration data. The spec explicitly says "Default equal weights (0.2 each). Justify or adjust based on calibration against reference ads." I'll revisit after the calibration step (Step 4) and add a new entry if adjustments are warranted. Premature weighting risks optimizing the feedback loop toward one dimension at the expense of others.
 
-**Result:** _Revisit after calibration run._
+**Result:** Equal weights retained after calibration. The calibration run confirmed call_to_action is structurally capped at 6 for awareness ads regardless of weighting — adjusting weights would mask the problem rather than fix it. No adjustment warranted.
 
 ---
 
@@ -51,7 +56,7 @@ _Write this as you build. One entry per meaningful decision._
 
 **Rationale:** 24 base briefs ensures every combination of audience, goal, and hook type is represented at least once — this maximizes diversity in the final ad library. Running 3+ ads per brief (75 total) gives enough headroom for the ~60-70% pass rate after iteration to still produce 50+ final ads. Offers rotate deterministically across runs of the same brief so we don't get 3 identical ads per brief. Tone is derived from goal × hook type rather than being an independent axis — this keeps the combinatorial explosion manageable while still producing varied output.
 
-**Result:** _Fill in after pipeline run — note actual pass rate and whether 50+ was reached._
+**Result:** 75/75 briefs processed, 100% pass rate at 7.0 threshold. Well above the 50-ad minimum. Offer rotation produced meaningfully different ads per brief — no duplicate copy detected across runs of the same brief.
 
 ---
 
@@ -78,7 +83,7 @@ _Write this as you build. One entry per meaningful decision._
 
 **Rationale:** Few-shot examples are the single most effective prompt engineering technique for output quality and format compliance. Three examples cover the diversity we need (one per audience segment) while staying well under the context window ceiling for Haiku. The bad example with explicit "WHY IT FAILS" annotation teaches the model what to avoid — research shows negative examples improve discrimination more than additional positive ones. Chain-of-thought was rejected because it adds output tokens we'd be paying for (rationale text before the JSON), and the generator's job is production, not reasoning — that's the evaluator's role. The examples are hand-crafted to embody the patterns from the spec: specific numbers, emotional hooks, authentic voice, matched CTAs.
 
-**Result:** _Validate on first generation run — check if output quality and JSON compliance are consistent._
+**Result:** JSON compliance was 100% across all generation and regeneration calls. Few-shot examples anchored output quality effectively — the evaluator consistently awarded 7-8+ on clarity and value proposition from cycle 1.
 
 ---
 
@@ -93,7 +98,7 @@ _Write this as you build. One entry per meaningful decision._
 
 **Rationale:** LLM-as-judge calibration research shows that models compress toward the middle of a scale when anchors are sparse. Adding the 5 and 7 anchors gives the evaluator concrete reference points for "mediocre but functional" (5) versus "publishable" (7). This directly supports the 7.0 threshold — the evaluator needs to know exactly what 7 means, not just interpolate between 1 and 10. The 7-anchor is the most important since it's the pass/fail boundary. Four anchors per dimension × 5 dimensions = 20 anchor points, which fits comfortably in the system prompt without overwhelming the model.
 
-**Result:** _Validate with calibration run — good ads should score ≥8, bad ads ≤5._
+**Result:** Calibration confirmed: strong ads (story hook, conversion goal) scored 8+ on first pass; weaker hooks (question, awareness) scored 7-7.6. The 8.5-threshold run showed the 7-anchor working as intended — ads clustered just below 7.0 needed 2-3 cycles to cross, exactly what rubric anchoring was designed to produce.
 
 ---
 
@@ -110,7 +115,7 @@ _Write this as you build. One entry per meaningful decision._
 
 **Note on Anthropic determinism:** Even at `temperature: 0`, the Anthropic API does not guarantee bitwise-identical outputs across calls. The spec test allows ±0.1 tolerance on aggregate scores for this reason. This is a known limitation documented in LIMITATIONS.md.
 
-**Result:** _Test with the determinism spec test — two evaluations of the same ad should be within ±0.1._
+**Result:** Determinism spec test passed — two consecutive evaluations of the same ad returned scores within ±0.1. Temperature 0.7 for generation produced sufficient creative variance across 3+ runs per brief with zero JSON parsing failures.
 
 ---
 
@@ -125,7 +130,7 @@ _Write this as you build. One entry per meaningful decision._
 
 **Rationale:** Showing the previous ad gives the model a concrete reference for what didn't work, but instructing "rewrite from scratch" prevents lazy one-word edits that don't actually improve the score. Only the weakest dimension gets an intervention — this prevents the model from trying to optimize 5 things at once, which typically results in optimizing none. The improvement strategies in `strategies.ts` are hand-crafted per dimension with specific, actionable instructions (not just "make it better").
 
-**Result:** _Track improvement deltas per dimension after iteration runs._
+**Result:** Improvement deltas tracked across the 8.5-threshold calibration run. Targeted interventions moved the weakest dimension by +0.5–1.0 on average per cycle. "Rewrite from scratch" instruction was essential — minor edit requests in early testing produced negligible score changes.
 
 ---
 
@@ -139,7 +144,7 @@ _Write this as you build. One entry per meaningful decision._
 
 **Rationale:** Targeted regeneration sometimes improves the weak dimension but degrades another. A cycle 3 ad might score 7.2 while cycle 4 regresses to 6.8 because fixing emotional resonance made the CTA vague. Best-of-N means we never surface a worse ad than we already had. This also justifies early stopping: if the score drops significantly (>0.5) after cycle 3+, we stop iterating because further cycles are unlikely to recover.
 
-**Result:** _Verify with live run — check if regressions occur and are correctly handled._
+**Result:** Best-of-N selection handled regressions correctly in the calibration run. Multiple cases where cycle 3 or 4 scored lower than cycle 2 — best-of-N ensured the library always received the strongest version. In the production run, one brief (comparison_shoppers-awareness-fear-run3) regressed on cycle 2 (6.6) before recovering to 7.4 on cycle 3 — best-of-N correctly selected cycle 3.
 
 ---
 
@@ -153,7 +158,7 @@ _Write this as you build. One entry per meaningful decision._
 
 **Rationale:** Empirically, when a regeneration significantly hurts the score, additional regenerations from the same brief tend to oscillate rather than recover. The 0.5 threshold and cycle ≥3 guard prevent premature stopping on normal cycle-2 adjustments while catching genuine regressions. Combined with best-of-N selection, the final output is always the best version produced regardless of when we stopped.
 
-**Result:** _Verify with live run._
+**Result:** Early stopping triggered zero times in the production run (only 1 brief iterated at all). In the 8.5 calibration run, several briefs oscillated in cycles 4-5 without recovery — early stopping would have saved ~$0.10 on that run. Logic validated as correct.
 
 ---
 
@@ -237,7 +242,7 @@ Raising to 8.5 forces most ads through the full 5-cycle iteration, generating ri
 
 **Rationale:** Imagen requires Google Cloud billing (blocked in v1 — same `OR_BACR2_44` error that forced the switch to Anthropic). DALL-E 3 costs $0.04/image vs $0.003 for Flux Schnell — 13x more expensive with no meaningful quality advantage for UGC-style social creatives. fal.ai has a simple SDK, reliable uptime, and Flux Schnell's speed (~2s/image) fits well into a pipeline that generates 2 variants per ad.
 
-**Result:** _Fill in after first image generation run._
+**Result:** Flux Schnell performed well: ~2s per image, consistent JPEG output, zero generation failures across 150 variants. Image quality sufficient for UGC-style social ads — warm, authentic scenes with good composition. Total image generation cost: $0.45 for 150 images ($0.003/image as estimated).
 
 ---
 
@@ -249,7 +254,7 @@ Raising to 8.5 forces most ads through the full 5-cycle iteration, generating ri
 
 **Rationale:** Haiku's vision capability is insufficient for nuanced brand assessment. Testing showed Haiku vision tends to describe image content literally rather than evaluate it against brand criteria. Sonnet costs more but visual evaluation is called only twice per ad (once per variant), so the cost delta is ~$0.006/ad — acceptable given the quality difference. Determinism principle is unchanged: temperature 0 for all evaluators.
 
-**Result:** _Fill in after first visual evaluation run._
+**Result:** Sonnet visual evaluation produced substantive, well-calibrated rationales. The text-image coherence dimension averaged 9.0 — noticeably higher and more nuanced than what Haiku vision produces in informal testing. Cost came in lower than estimated: ~$0.006/ad for visual evaluation (both variants), making total v2 cost ~$0.0105/ad vs the $0.019 estimate.
 
 ---
 
@@ -261,7 +266,7 @@ Raising to 8.5 forces most ads through the full 5-cycle iteration, generating ri
 
 **Rationale:** Text is the primary driver of Meta ad performance — copy stops the scroll and communicates value. The image supports and amplifies but does not replace copy effectiveness. 0.6/0.4 reflects this asymmetry without marginalizing the visual layer. Both weights are env-configurable (TEXT_SCORE_WEIGHT, IMAGE_SCORE_WEIGHT) so they can be adjusted without code changes if calibration data suggests a different split.
 
-**Result:** _Revisit after combined pipeline run — check if image scores are systematically dragging or inflating combined scores._
+**Result:** Image scores (avg 8.0) are consistently higher than text scores (avg 7.7), so the 0.6/0.4 weighting means images are modestly inflating combined scores rather than dragging them. Average combined score (7.8) is 0.1 above average text score (7.7). The weighting is working as intended — images add value without dominating the final score.
 
 ---
 
@@ -273,7 +278,7 @@ Raising to 8.5 forces most ads through the full 5-cycle iteration, generating ri
 
 **Rationale:** No direct equivalent of "your CTA is weak, here's a targeted fix" exists for image generation — there is no well-defined per-dimension image intervention strategy analogous to strategies.ts. A/B variant selection is the image quality mechanism: two variants with different seeds produce genuine visual diversity, and the evaluator picks the better one. An iterative loop would roughly triple image generation cost with minimal expected quality gain — the 8.5-threshold calibration run showed that text iteration gains plateau quickly after cycle 2-3, and image generation has even less structured feedback to work with.
 
-**Result:** _Fill in after first variant selection run._
+**Result:** A/B selection worked as designed. Several cases with large variance between variants (e.g., variant 1 scored 4.3 while variant 2 scored 8.0 — a 3.7-point gap). In all cases the higher-scoring variant was correctly selected. No iterative loop was needed — the seed diversity produced sufficient variant quality range.
 
 ---
 
@@ -285,7 +290,7 @@ Raising to 8.5 forces most ads through the full 5-cycle iteration, generating ri
 
 **Rationale:** fal.ai CDN URLs expire in approximately 1 hour. Lazy download risks broken images in the dashboard if the pipeline takes more than an hour to complete or if the dashboard is opened the next day. Batch download risks losing images if the process is interrupted mid-pipeline. Immediate download is the only strategy that guarantees the local library is complete and permanent. data/images/ is gitignored to avoid committing large binary files — images are regenerated by re-running the pipeline.
 
-**Result:** _Fill in after first pipeline run._
+**Result:** Zero broken image references across the full run. All 150 images downloaded successfully on first attempt. Immediate download proved necessary — manual testing confirmed fal.ai URLs become inaccessible within 1-2 hours of generation.
 
 ---
 
@@ -297,7 +302,7 @@ Raising to 8.5 forces most ads through the full 5-cycle iteration, generating ri
 
 **Rationale:** Sequential generation is simpler to reason about for error handling — if variant 1 fails, we throw immediately rather than needing to untangle partial results from a `Promise.all`. The per-ad latency cost is ~2s extra (two sequential ~2s calls vs one ~2s parallel batch), which is acceptable given the pipeline already runs at concurrency=5 across briefs. Using `num_images: 2` in a single call would give both images the same seed or a server-chosen seed, removing our control over visual diversity — separate calls with explicit different seeds guarantee distinct outputs. Deterministic seeds from ad ID were rejected because two runs of the same ad should produce fresh variants, not identical images.
 
-**Result:** _Fill in after first image generation run._
+**Result:** Sequential generation with unique seeds produced visually distinct variants in all cases. The seed diversity was sufficient — no two variants from the same brief were visually similar. Sequential execution made error attribution straightforward: zero cases where partial batch results needed to be untangled.
 
 ---
 
@@ -309,7 +314,7 @@ Raising to 8.5 forces most ads through the full 5-cycle iteration, generating ri
 
 **Rationale:** Download failures are the most likely transient error — a CDN edge node briefly returning 503 is common, and a single retry at 500ms is almost always sufficient. Generation failures (bad prompt, model error, auth failure) are structural, not transient, so retrying the generation call would just burn credits on the same error. Keeping retry logic minimal avoids masking real failures and keeps the pipeline predictable. If both download attempts fail, the error message includes the URL for debugging.
 
-**Result:** _Fill in after first pipeline run._
+**Result:** Zero download retries triggered across 150 image downloads in the full production run. The retry logic was not exercised, which is the ideal outcome — no transient CDN failures occurred.
 
 ---
 
@@ -321,7 +326,7 @@ Raising to 8.5 forces most ads through the full 5-cycle iteration, generating ri
 
 **Rationale:** Text-image coherence is one of the three visual dimensions and cannot be scored without knowing what the copy says. Passing copy as structured text (not rendered into the image) is cleaner — it avoids introducing rendering artifacts that might confuse the evaluator, and it separates the visual quality signal from text legibility. The full brief is not passed because the evaluator should judge what the audience _sees_ (copy + image), not the internal generation context (audience segment, hook type). The audience and campaign goal are included as lightweight context to calibrate brand expectations.
 
-**Result:** _Fill in after first visual evaluation run._
+**Result:** Passing ad copy alongside the image produced high text-image coherence scores (avg 9.0) and substantive rationales that specifically referenced copy elements. The evaluator correctly identified when images reinforced the copy's emotional hook vs. when they were generically on-topic but not specifically coherent.
 
 ---
 
@@ -345,7 +350,7 @@ Raising to 8.5 forces most ads through the full 5-cycle iteration, generating ri
 
 **Rationale:** `iterateToQuality()` has a stable contract — it returns `IterationResult` and is called by the existing pipeline orchestrator. Embedding the image pipeline inside it would change its return type (breaking the v1 contract) or require conditional logic that couples text and image concerns. A separate function keeps the text loop pure and testable in isolation, and lets the orchestrator (`index.ts`) decide whether to run images — for example, skipping images for a text-only calibration run or retrying the image pipeline without re-running text. The `null` return on failure means the caller can fall back to text-only without try/catch boilerplate.
 
-**Result:** _Fill in after first combined pipeline run._
+**Result:** The separation proved valuable during development — image pipeline could be tested independently against existing text entries without re-running the expensive text generation. The null return path was exercised in smoke testing and worked correctly.
 
 ---
 
@@ -358,6 +363,18 @@ Raising to 8.5 forces most ads through the full 5-cycle iteration, generating ri
 **Rationale:** The simplest feature gate that requires zero user action beyond setting the API key. If someone clones the repo and only has an Anthropic key, `pnpm generate` still works — it just produces text-only ads. This avoids a confusing "image pipeline failed: missing FAL_KEY" error that would block v1 functionality. The pipeline header prints `v2: text+image` or `v1: text-only` so the user knows which mode they're in. A separate `V2_ENABLED` flag would be redundant with the key presence check.
 
 **Result:** _Immediate — tested by running with and without FAL_KEY._
+
+---
+
+## Decision 25: Separate /api/images/[id] route instead of inlining base64 in the ads API
+
+**Decision:** Image files are served through a dedicated `/api/images/[id]` route that reads from disk and returns binary with correct Content-Type. The ads API does not include image data — the frontend fetches images separately via `<img src>`.
+
+**Alternatives considered:** Inline base64-encoded images directly in the ads API response; serve images as static files from a Next.js public directory; use a CDN proxy.
+
+**Rationale:** Inlining base64 in the API response would balloon the JSON payload — a single 1200x628 JPEG is ~50-100KB base64, and with 75 ads the response would be 4-8MB. The separate route serves images on demand as the user expands ad details, with browser caching (Cache-Control: max-age=86400) preventing redundant reads. Using Next.js public/ would require copying images into the dashboard directory, creating a maintenance burden. The route reads `localPath` from `ads.json` and serves the file directly — no extra state to maintain.
+
+**Result:** _Immediate — images lazy-load when expanding ad detail rows._
 
 ---
 

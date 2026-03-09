@@ -434,28 +434,6 @@ Competitor ads from Princeton Review, Kaplan, Khan Academy, and Chegg are saved 
 
 ---
 
-## First Claude Code Prompt
-
-```
-Please read the following files before doing anything:
-- CLAUDE.md (v2 implementation guide — this file)
-- nerdy-docs/spec.md (original project specification — focus on v2 section)
-- docs/DECISION_LOG.md (v1 decisions — continue numbering from Decision 13)
-
-This is v2 of a complete, working v1 project. Do NOT modify any existing v1 logic.
-Only extend it.
-
-Start with Step 1 and Step 2:
-1. Extend src/types.ts with the v2 interfaces (ImageResult, VisualDimensionScore,
-   VisualEvaluation, AdVariant, CombinedAdEntry, VISUAL_DIMENSION_NAMES)
-2. Add buildImagePrompt(ad, brief) to src/generate/prompts.ts
-
-Show me both files before proceeding to Step 3 (image-generator.ts).
-Add DECISION_LOG.md entries for any non-obvious choices as you go.
-```
-
----
-
 ## Notes for Claude Code
 
 - Never modify v1 files except `types.ts`, `prompts.ts`, `loop.ts`, `library.ts`,

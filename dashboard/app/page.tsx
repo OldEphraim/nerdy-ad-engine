@@ -39,10 +39,33 @@ interface IterationHistory {
   estimatedCostUsd: number;
 }
 
+interface VisualScore {
+  dimension: string;
+  score: number;
+  rationale: string;
+  confidence: string;
+}
+
+interface VisualEval {
+  aggregateScore: number;
+  passesThreshold: boolean;
+  scores: VisualScore[];
+}
+
+interface AdVariant {
+  imageResult: { localPath: string; width: number; height: number; seed: number };
+  visualEvaluation: VisualEval;
+}
+
 interface AdEntry {
   ad: Ad;
   evaluation: Evaluation;
   iterationHistory: IterationHistory;
+  // V2 fields
+  isCombinedEntry?: boolean;
+  selectedVariant?: AdVariant;
+  allVariants?: AdVariant[];
+  combinedScore?: number;
 }
 
 interface DimAverage {
@@ -50,7 +73,7 @@ interface DimAverage {
   avgScore: number;
 }
 
-type SortKey = "score" | "briefId" | "cycles" | "cost";
+type SortKey = "score" | "combined" | "briefId" | "cycles" | "cost";
 
 function formatBriefId(briefId: string): string {
   return briefId
@@ -110,6 +133,9 @@ const DIMENSION_LABELS: Record<string, string> = {
   call_to_action: "CTA",
   brand_voice: "Brand Voice",
   emotional_resonance: "Emotion",
+  brand_consistency: "Brand Consistency",
+  visual_engagement: "Visual Engagement",
+  text_image_coherence: "Text-Image Coherence",
 };
 
 const THRESHOLD = 7.0;
@@ -123,16 +149,28 @@ export default function AdLibrary() {
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [passingCount, setPassingCount] = useState(0);
   const [dimAverages, setDimAverages] = useState<DimAverage[]>([]);
+  const [imageStats, setImageStats] = useState<{
+    adsWithImages: number;
+    avgVisualScore: number;
+    avgCombinedScore: number;
+    avgScoreByDimension: Record<string, number>;
+  } | null>(null);
 
   useEffect(() => {
     setLoading(true);
     const url = selectedRun ? `/api/ads?run=${encodeURIComponent(selectedRun)}` : "/api/ads";
     fetch(url)
       .then((r) => r.json())
-      .then((data: { ads: AdEntry[]; stats: { passingCount: number }; dimAverages: DimAverage[] }) => {
+      .then((data: {
+        ads: AdEntry[];
+        stats: { passingCount: number };
+        dimAverages: DimAverage[];
+        imageStats?: { adsWithImages: number; avgVisualScore: number; avgCombinedScore: number; avgScoreByDimension: Record<string, number> };
+      }) => {
         setEntries(data.ads);
         setPassingCount(data.stats.passingCount);
         setDimAverages(data.dimAverages ?? []);
+        setImageStats(data.imageStats?.adsWithImages ? data.imageStats : null);
         setLoading(false);
       });
   }, [selectedRun]);
@@ -151,6 +189,9 @@ export default function AdLibrary() {
     switch (sortKey) {
       case "score":
         cmp = a.evaluation.aggregateScore - b.evaluation.aggregateScore;
+        break;
+      case "combined":
+        cmp = (a.combinedScore ?? a.evaluation.aggregateScore) - (b.combinedScore ?? b.evaluation.aggregateScore);
         break;
       case "briefId":
         cmp = a.ad.briefId.localeCompare(b.ad.briefId);
@@ -212,6 +253,36 @@ export default function AdLibrary() {
         </div>
       )}
 
+      {/* V2: Image stats summary */}
+      {imageStats && (
+        <div className="mb-6 rounded-lg border border-zinc-200 bg-white p-4">
+          <h2 className="text-xs font-semibold uppercase tracking-wider text-zinc-400 mb-3">
+            Visual Scores (v2)
+          </h2>
+          <div className="flex flex-wrap gap-3">
+            <div className="flex items-center gap-2 rounded-lg border border-zinc-200 bg-zinc-50 px-3 py-2 text-sm">
+              <span className="font-medium text-zinc-700">Avg Visual</span>
+              <span className="font-semibold text-zinc-900">{imageStats.avgVisualScore.toFixed(1)}</span>
+            </div>
+            <div className="flex items-center gap-2 rounded-lg border border-zinc-200 bg-zinc-50 px-3 py-2 text-sm">
+              <span className="font-medium text-zinc-700">Avg Combined</span>
+              <span className="font-semibold text-zinc-900">{imageStats.avgCombinedScore.toFixed(1)}</span>
+            </div>
+            {Object.entries(imageStats.avgScoreByDimension).map(([dim, avg]) => (
+              <div
+                key={dim}
+                className="flex items-center gap-2 rounded-lg border border-zinc-200 bg-zinc-50 px-3 py-2 text-sm"
+              >
+                <span className="font-medium text-zinc-700">
+                  {DIMENSION_LABELS[dim] ?? dim}
+                </span>
+                <span className="font-semibold text-zinc-900">{avg.toFixed(1)}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
       <div className="overflow-x-auto rounded-lg border border-zinc-200 bg-white">
         <table className="w-full text-sm">
           <thead>
@@ -223,8 +294,13 @@ export default function AdLibrary() {
               <th className="px-4 py-3">Goal</th>
               <th className="px-4 py-3">Hook</th>
               <th className="px-4 py-3 cursor-pointer hover:text-zinc-800" onClick={() => handleSort("score")}>
-                Score {sortKey === "score" ? (sortAsc ? "↑" : "↓") : ""}
+                Text {sortKey === "score" ? (sortAsc ? "↑" : "↓") : ""}
               </th>
+              {imageStats && (
+                <th className="px-4 py-3 cursor-pointer hover:text-zinc-800" onClick={() => handleSort("combined")}>
+                  Combined {sortKey === "combined" ? (sortAsc ? "↑" : "↓") : ""}
+                </th>
+              )}
               <th className="px-4 py-3 cursor-pointer hover:text-zinc-800" onClick={() => handleSort("cycles")}>
                 Cycles {sortKey === "cycles" ? (sortAsc ? "↑" : "↓") : ""}
               </th>
@@ -242,6 +318,7 @@ export default function AdLibrary() {
                   entry={entry}
                   isExpanded={isExpanded}
                   onToggle={() => setExpandedId(isExpanded ? null : entry.ad.id)}
+                  hasImageColumn={!!imageStats}
                 />
               );
             })}
@@ -256,13 +333,16 @@ function AdRow({
   entry,
   isExpanded,
   onToggle,
+  hasImageColumn,
 }: {
   entry: AdEntry;
   isExpanded: boolean;
   onToggle: () => void;
+  hasImageColumn: boolean;
 }) {
   const { ad, evaluation, iterationHistory } = entry;
   const score = evaluation.aggregateScore;
+  const colSpan = hasImageColumn ? 8 : 7;
 
   return (
     <>
@@ -281,6 +361,17 @@ function AdRow({
             {score.toFixed(1)}
           </span>
         </td>
+        {hasImageColumn && (
+          <td className="px-4 py-3">
+            {entry.combinedScore != null ? (
+              <span className={`inline-block rounded-full px-2.5 py-0.5 text-xs font-semibold ${scoreBadge(entry.combinedScore)}`}>
+                {entry.combinedScore.toFixed(1)}
+              </span>
+            ) : (
+              <span className="text-xs text-zinc-400">—</span>
+            )}
+          </td>
+        )}
         <td className="px-4 py-3 text-zinc-600">{iterationHistory.cycles.length}</td>
         <td className="px-4 py-3 font-mono text-xs text-zinc-500">
           ${iterationHistory.estimatedCostUsd.toFixed(4)}
@@ -289,7 +380,7 @@ function AdRow({
 
       {isExpanded && (
         <tr>
-          <td colSpan={7} className="px-0 py-0">
+          <td colSpan={colSpan} className="px-0 py-0">
             <AdDetail entry={entry} />
           </td>
         </tr>
@@ -303,6 +394,29 @@ function AdDetail({ entry }: { entry: AdEntry }) {
 
   return (
     <div className="border-t border-zinc-200 bg-zinc-50 px-6 py-5 space-y-5">
+      {/* V2: Image thumbnail */}
+      {entry.isCombinedEntry && entry.selectedVariant && (
+        <div>
+          <h3 className="text-xs font-semibold uppercase tracking-wider text-zinc-400 mb-2">
+            Ad Creative
+            {entry.combinedScore != null && (
+              <span className="ml-2 text-zinc-500 normal-case font-normal">
+                combined score: {entry.combinedScore.toFixed(1)} (text {evaluation.aggregateScore.toFixed(1)} × 0.6 + image {entry.selectedVariant.visualEvaluation.aggregateScore.toFixed(1)} × 0.4)
+              </span>
+            )}
+          </h3>
+          <div className="rounded-lg border border-zinc-200 bg-white p-3 inline-block">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
+              src={`/api/images/${ad.id}`}
+              alt={`Ad creative for ${ad.headline}`}
+              className="rounded max-h-[200px] w-auto"
+              loading="lazy"
+            />
+          </div>
+        </div>
+      )}
+
       {/* Ad Copy */}
       <div>
         <h3 className="text-xs font-semibold uppercase tracking-wider text-zinc-400 mb-2">Ad Copy</h3>
@@ -355,6 +469,34 @@ function AdDetail({ entry }: { entry: AdEntry }) {
           ))}
         </div>
       </div>
+
+      {/* V2: Visual Dimension Scores */}
+      {entry.isCombinedEntry && entry.selectedVariant && (
+        <div>
+          <h3 className="text-xs font-semibold uppercase tracking-wider text-zinc-400 mb-2">
+            Visual Scores (aggregate: {entry.selectedVariant.visualEvaluation.aggregateScore.toFixed(1)})
+          </h3>
+          <div className="space-y-2">
+            {entry.selectedVariant.visualEvaluation.scores.map((s) => (
+              <div key={s.dimension} className={`rounded-lg border border-zinc-200 p-3 ${dimScoreBg(s.score)}`}>
+                <div className="flex items-center justify-between mb-1">
+                  <span className="text-sm font-medium">
+                    {DIMENSION_LABELS[s.dimension] ?? s.dimension}
+                  </span>
+                  <span className="text-sm font-semibold">{s.score}/10</span>
+                </div>
+                <div className="h-1.5 rounded-full bg-zinc-200 overflow-hidden mb-2">
+                  <div
+                    className={`h-full rounded-full ${dimBarColor(s.score)}`}
+                    style={{ width: `${s.score * 10}%` }}
+                  />
+                </div>
+                <p className="text-xs opacity-80">{s.rationale}</p>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
 
       {/* Iteration History */}
       {iterationHistory.cycles.length > 1 && (

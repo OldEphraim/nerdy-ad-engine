@@ -16,10 +16,44 @@ interface CycleData {
   interventionUsed?: string;
 }
 
+interface VisualDimScore {
+  dimension: string;
+  score: number;
+  rationale: string;
+  confidence: string;
+}
+
+interface VisualEval {
+  aggregateScore: number;
+  passesThreshold: boolean;
+  scores: VisualDimScore[];
+  weakestDimension: VisualDimScore;
+}
+
+interface ImageResult {
+  localPath: string;
+  width: number;
+  height: number;
+  seed: number;
+  generationTimeMs: number;
+  costUsd: number;
+}
+
+interface AdVariant {
+  imageResult: ImageResult;
+  visualEvaluation: VisualEval;
+}
+
 interface AdEntry {
   ad: { id: string; briefId: string };
   evaluation: { aggregateScore: number; scores: DimensionScore[] };
   iterationHistory: { cycles: CycleData[]; converged: boolean };
+  // V2 fields (present on CombinedAdEntry)
+  selectedVariant?: AdVariant;
+  allVariants?: AdVariant[];
+  combinedScore?: number;
+  textScoreWeight?: number;
+  imageScoreWeight?: number;
 }
 
 export async function GET(request: NextRequest) {
@@ -87,11 +121,21 @@ export async function GET(request: NextRequest) {
     }))
     .sort((a, b) => a.avgScore - b.avgScore);
 
+  // V2: Annotate each ad with isCombinedEntry flag and compute image stats
+  const annotatedAds = ads.map((a) => ({
+    ...a,
+    isCombinedEntry: a.selectedVariant != null,
+  }));
+
+  const combinedEntries = ads.filter((a) => a.selectedVariant != null);
+  const imageStats = computeImageStats(combinedEntries);
+
   return NextResponse.json({
-    ads,
+    ads: annotatedAds,
     trend,
     stats: { passingCount, avgCyclesToConverge },
     dimAverages,
+    imageStats,
     availableRuns: listRuns(dataDir),
   });
 }
@@ -103,4 +147,64 @@ function listRuns(dataDir: string): string[] {
     .filter((f) => f.endsWith(".json"))
     .map((f) => f.replace(/\.json$/, ""))
     .sort();
+}
+
+const VISUAL_DIMS = ["brand_consistency", "visual_engagement", "text_image_coherence"] as const;
+
+function computeImageStats(entries: AdEntry[]) {
+  if (entries.length === 0) {
+    return {
+      adsWithImages: 0,
+      variantsGenerated: 0,
+      imagePassRate: 0,
+      avgVisualScore: 0,
+      avgCombinedScore: 0,
+      avgScoreByDimension: {} as Record<string, number>,
+    };
+  }
+
+  const variantsGenerated = entries.reduce(
+    (sum, e) => sum + (e.allVariants?.length ?? 0),
+    0,
+  );
+
+  const passing = entries.filter(
+    (e) => e.selectedVariant!.visualEvaluation.passesThreshold,
+  ).length;
+
+  const avgVisualScore =
+    Math.round(
+      (entries.reduce(
+        (sum, e) => sum + e.selectedVariant!.visualEvaluation.aggregateScore,
+        0,
+      ) / entries.length) * 10,
+    ) / 10;
+
+  const avgCombinedScore =
+    Math.round(
+      (entries.reduce((sum, e) => sum + (e.combinedScore ?? 0), 0) /
+        entries.length) * 10,
+    ) / 10;
+
+  const dimSums: Record<string, number> = {};
+  for (const name of VISUAL_DIMS) dimSums[name] = 0;
+  for (const entry of entries) {
+    for (const s of entry.selectedVariant!.visualEvaluation.scores) {
+      dimSums[s.dimension] = (dimSums[s.dimension] ?? 0) + s.score;
+    }
+  }
+  const avgScoreByDimension: Record<string, number> = {};
+  for (const name of VISUAL_DIMS) {
+    avgScoreByDimension[name] =
+      Math.round(((dimSums[name] ?? 0) / entries.length) * 10) / 10;
+  }
+
+  return {
+    adsWithImages: entries.length,
+    variantsGenerated,
+    imagePassRate: Math.round((passing / entries.length) * 100),
+    avgVisualScore,
+    avgCombinedScore,
+    avgScoreByDimension,
+  };
 }
