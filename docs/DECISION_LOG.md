@@ -349,3 +349,15 @@ Raising to 8.5 forces most ads through the full 5-cycle iteration, generating ri
 
 ---
 
+## Decision 24: Image pipeline gated on FAL_KEY presence, not a separate CLI flag
+
+**Decision:** The v2 image pipeline runs automatically when `FAL_KEY` is set in the environment. When `FAL_KEY` is absent, the pipeline runs in v1 text-only mode with no code path changes or errors.
+
+**Alternatives considered:** A `--with-images` CLI flag; a `V2_ENABLED=true` env var; always running the image pipeline and failing loudly if `FAL_KEY` is missing.
+
+**Rationale:** The simplest feature gate that requires zero user action beyond setting the API key. If someone clones the repo and only has an Anthropic key, `pnpm generate` still works — it just produces text-only ads. This avoids a confusing "image pipeline failed: missing FAL_KEY" error that would block v1 functionality. The pipeline header prints `v2: text+image` or `v1: text-only` so the user knows which mode they're in. A separate `V2_ENABLED` flag would be redundant with the key presence check.
+
+**Result:** _Immediate — tested by running with and without FAL_KEY._
+
+---
+

@@ -4,21 +4,29 @@
 
 import 'dotenv/config';
 import { expandBriefs } from './generate/briefs.js';
-import { iterateToQuality } from './iterate/loop.js';
-import { appendToLibrary, writeAdLibrary } from './output/library.js';
+import { iterateToQuality, runImagePipeline } from './iterate/loop.js';
+import { appendToLibrary, writeAdLibrary, isCombinedAdEntry, getImageStats } from './output/library.js';
 import { getQualityTrend } from './output/trends.js';
-import type { AdLibraryEntry } from './types.js';
+import type { AdLibraryEntry, CombinedAdEntry } from './types.js';
 
 const CONCURRENCY_LIMIT = parseInt(process.env['CONCURRENCY_LIMIT'] ?? '5', 10);
 
 async function main() {
   const briefs = expandBriefs(75);
-  console.log(`\n=== Ad Engine Pipeline ===`);
+  const imageEnabled = !!process.env['FAL_KEY'];
+
+  console.log(`\n=== Ad Engine Pipeline (${imageEnabled ? 'v2: text+image' : 'v1: text-only'}) ===`);
   console.log(`Briefs to process: ${briefs.length}`);
   console.log(`Concurrency limit: ${CONCURRENCY_LIMIT}`);
   console.log(`Quality threshold: ${process.env['QUALITY_THRESHOLD'] ?? '7.0'}`);
   console.log(`Generator model: ${process.env['GENERATOR_MODEL'] ?? 'claude-haiku-4-5'}`);
-  console.log(`Evaluator model: ${process.env['EVALUATOR_MODEL'] ?? 'claude-haiku-4-5'}\n`);
+  console.log(`Evaluator model: ${process.env['EVALUATOR_MODEL'] ?? 'claude-haiku-4-5'}`);
+  if (imageEnabled) {
+    console.log(`Image model: ${process.env['IMAGE_MODEL'] ?? 'fal-ai/flux/schnell'}`);
+    console.log(`Visual evaluator: ${process.env['VISUAL_EVALUATOR_MODEL'] ?? 'claude-sonnet-4-5'}`);
+    console.log(`Image variants: ${process.env['IMAGE_VARIANTS'] ?? '2'}`);
+  }
+  console.log();
 
   // Clear previous run
   writeAdLibrary([]);
@@ -34,21 +42,33 @@ async function main() {
       batch.map(async (brief) => {
         const { record, finalAd, finalEvaluation } = await iterateToQuality(brief);
 
-        const entry: AdLibraryEntry = {
+        let entry: AdLibraryEntry = {
           ad: finalAd,
           evaluation: finalEvaluation,
           iterationHistory: record,
         };
+
+        // V2: Run image pipeline if text passes and FAL_KEY is configured
+        if (imageEnabled && record.converged) {
+          const combined = await runImagePipeline(entry, brief);
+          if (combined) {
+            entry = combined;
+          }
+          // If null, entry stays as text-only AdLibraryEntry
+        }
 
         // Write incrementally — survives crashes
         appendToLibrary(entry);
         results.push(entry);
 
         const status = record.converged ? 'PASS' : 'FAIL';
+        const scoreLabel = isCombinedAdEntry(entry)
+          ? `text=${finalEvaluation.aggregateScore} combined=${entry.combinedScore}`
+          : `score=${finalEvaluation.aggregateScore}`;
         completed++;
         console.log(
           `[${completed}/${briefs.length}] ${status} ${brief.id} ` +
-          `score=${finalEvaluation.aggregateScore} ` +
+          `${scoreLabel} ` +
           `cycles=${record.cycles.length} ` +
           `cost=$${record.estimatedCostUsd.toFixed(4)}`
         );
@@ -83,6 +103,31 @@ async function main() {
     for (const t of trend) {
       console.log(`  Cycle ${t.cycle}: avg=${t.avgScore} (n=${t.adCount})`);
     }
+  }
+
+  // V2: Image pipeline stats
+  const combinedEntries = results.filter(isCombinedAdEntry);
+  if (combinedEntries.length > 0) {
+    const imgStats = getImageStats(combinedEntries);
+    console.log(`\n--- Image Pipeline Stats ---`);
+    console.log(`Ads with images: ${combinedEntries.length}/${results.length}`);
+    console.log(`Variants generated: ${imgStats.variantsGenerated}`);
+    console.log(`Image pass rate (≥7.0): ${(imgStats.imagePassRate * 100).toFixed(1)}%`);
+    console.log(`Avg visual score: ${imgStats.avgVisualScore}`);
+    console.log(`Avg combined score: ${imgStats.avgCombinedScore}`);
+    console.log(`Weakest visual dimension: ${imgStats.weakestVisualDimension}`);
+    console.log(`Visual scores by dimension:`);
+    for (const [dim, avg] of Object.entries(imgStats.avgScoreByDimension)) {
+      console.log(`  ${dim.replace(/_/g, ' ')}: ${avg}`);
+    }
+
+    // Estimate total image cost
+    const imageCost = combinedEntries.reduce((sum, e) => {
+      const genCost = e.allVariants.reduce((s, v) => s + v.imageResult.costUsd, 0);
+      return sum + genCost;
+    }, 0);
+    console.log(`Image generation cost: $${imageCost.toFixed(4)}`);
+    console.log(`Total cost (text + image): $${(totalCost + imageCost).toFixed(4)}`);
   }
 
   console.log(`\nResults written to data/ads.json and data/ads.csv`);

@@ -4,7 +4,8 @@
 
 import * as fs from 'fs';
 import * as path from 'path';
-import type { AdLibraryEntry } from '../types.js';
+import type { AdLibraryEntry, CombinedAdEntry, VisualDimensionName } from '../types.js';
+import { VISUAL_DIMENSION_NAMES } from '../types.js';
 
 const DATA_DIR = path.resolve('data');
 const JSON_PATH = path.join(DATA_DIR, 'ads.json');
@@ -89,4 +90,85 @@ function csvEscape(value: string): string {
     return `"${value.replace(/"/g, '""')}"`;
   }
   return value;
+}
+
+// ── V2: Image stats ─────────────────────────────────────────────────────────
+
+/** Type guard: check if an entry has image data */
+export function isCombinedAdEntry(entry: AdLibraryEntry): entry is CombinedAdEntry {
+  return 'selectedVariant' in entry && entry.selectedVariant != null;
+}
+
+export interface ImageStats {
+  variantsGenerated: number;
+  imagePassRate: number;
+  avgVisualScore: number;
+  avgCombinedScore: number;
+  weakestVisualDimension: VisualDimensionName;
+  avgScoreByDimension: Record<VisualDimensionName, number>;
+}
+
+export function getImageStats(entries: CombinedAdEntry[]): ImageStats {
+  if (entries.length === 0) {
+    return {
+      variantsGenerated: 0,
+      imagePassRate: 0,
+      avgVisualScore: 0,
+      avgCombinedScore: 0,
+      weakestVisualDimension: 'brand_consistency',
+      avgScoreByDimension: { brand_consistency: 0, visual_engagement: 0, text_image_coherence: 0 },
+    };
+  }
+
+  const variantsGenerated = entries.reduce((sum, e) => sum + e.allVariants.length, 0);
+
+  const passingImages = entries.filter(
+    (e) => e.selectedVariant.visualEvaluation.passesThreshold,
+  ).length;
+  const imagePassRate = passingImages / entries.length;
+
+  const avgVisualScore =
+    Math.round(
+      (entries.reduce((sum, e) => sum + e.selectedVariant.visualEvaluation.aggregateScore, 0) /
+        entries.length) *
+        10,
+    ) / 10;
+
+  const avgCombinedScore =
+    Math.round(
+      (entries.reduce((sum, e) => sum + e.combinedScore, 0) / entries.length) * 10,
+    ) / 10;
+
+  // Per-dimension averages
+  const dimSums: Record<string, number> = {};
+  for (const name of VISUAL_DIMENSION_NAMES) {
+    dimSums[name] = 0;
+  }
+  for (const entry of entries) {
+    for (const score of entry.selectedVariant.visualEvaluation.scores) {
+      dimSums[score.dimension] = (dimSums[score.dimension] ?? 0) + score.score;
+    }
+  }
+
+  const avgScoreByDimension = {} as Record<VisualDimensionName, number>;
+  let weakestDim: VisualDimensionName = VISUAL_DIMENSION_NAMES[0];
+  let weakestAvg = Infinity;
+
+  for (const name of VISUAL_DIMENSION_NAMES) {
+    const avg = Math.round(((dimSums[name] ?? 0) / entries.length) * 10) / 10;
+    avgScoreByDimension[name] = avg;
+    if (avg < weakestAvg) {
+      weakestAvg = avg;
+      weakestDim = name;
+    }
+  }
+
+  return {
+    variantsGenerated,
+    imagePassRate,
+    avgVisualScore,
+    avgCombinedScore,
+    weakestVisualDimension: weakestDim,
+    avgScoreByDimension,
+  };
 }
