@@ -289,3 +289,27 @@ Raising to 8.5 forces most ads through the full 5-cycle iteration, generating ri
 
 ---
 
+## Decision 19: Sequential image generation with unique random seeds per variant
+
+**Decision:** Generate image variants sequentially (not in parallel), each with a different seed drawn from `Math.random() * 2^31`. Seeds are pre-generated before the loop to guarantee uniqueness within a batch.
+
+**Alternatives considered:** Parallel generation of all variants simultaneously; using `num_images: 2` in a single fal.ai call to get both variants at once; deterministic seeds derived from the ad ID.
+
+**Rationale:** Sequential generation is simpler to reason about for error handling — if variant 1 fails, we throw immediately rather than needing to untangle partial results from a `Promise.all`. The per-ad latency cost is ~2s extra (two sequential ~2s calls vs one ~2s parallel batch), which is acceptable given the pipeline already runs at concurrency=5 across briefs. Using `num_images: 2` in a single call would give both images the same seed or a server-chosen seed, removing our control over visual diversity — separate calls with explicit different seeds guarantee distinct outputs. Deterministic seeds from ad ID were rejected because two runs of the same ad should produce fresh variants, not identical images.
+
+**Result:** _Fill in after first image generation run._
+
+---
+
+## Decision 20: Single retry on image download failure
+
+**Decision:** The `downloadImage` helper retries once (2 total attempts, 500ms delay) before throwing. Image generation itself does not retry — a fal.ai generation failure is immediately fatal for that variant.
+
+**Alternatives considered:** No retries (fail fast on any network blip); exponential backoff with 3+ retries; retry the entire generation call on download failure.
+
+**Rationale:** Download failures are the most likely transient error — a CDN edge node briefly returning 503 is common, and a single retry at 500ms is almost always sufficient. Generation failures (bad prompt, model error, auth failure) are structural, not transient, so retrying the generation call would just burn credits on the same error. Keeping retry logic minimal avoids masking real failures and keeps the pipeline predictable. If both download attempts fail, the error message includes the URL for debugging.
+
+**Result:** _Fill in after first pipeline run._
+
+---
+
