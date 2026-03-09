@@ -337,3 +337,15 @@ Raising to 8.5 forces most ads through the full 5-cycle iteration, generating ri
 
 ---
 
+## Decision 23: runImagePipeline as a separate function, not inlined into iterateToQuality
+
+**Decision:** The image pipeline is a standalone exported function `runImagePipeline(entry, brief)` that the caller invokes after `iterateToQuality()`, rather than being embedded inside the iteration loop itself.
+
+**Alternatives considered:** Extend `iterateToQuality()` to run the image pipeline automatically before returning; add an options flag like `{ includeImages: true }` to control behavior.
+
+**Rationale:** `iterateToQuality()` has a stable contract — it returns `IterationResult` and is called by the existing pipeline orchestrator. Embedding the image pipeline inside it would change its return type (breaking the v1 contract) or require conditional logic that couples text and image concerns. A separate function keeps the text loop pure and testable in isolation, and lets the orchestrator (`index.ts`) decide whether to run images — for example, skipping images for a text-only calibration run or retrying the image pipeline without re-running text. The `null` return on failure means the caller can fall back to text-only without try/catch boilerplate.
+
+**Result:** _Fill in after first combined pipeline run._
+
+---
+

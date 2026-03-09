@@ -7,8 +7,11 @@ import type {
   EvaluationResult,
   IterationCycle,
   IterationRecord,
+  AdLibraryEntry,
+  CombinedAdEntry,
+  AdVariant,
 } from '../types.js';
-import { QUALITY_THRESHOLD, estimateCost } from '../types.js';
+import { QUALITY_THRESHOLD, estimateCost, TEXT_SCORE_WEIGHT, IMAGE_SCORE_WEIGHT } from '../types.js';
 
 export interface IterationResult {
   record: IterationRecord;
@@ -126,4 +129,81 @@ function selectBestCycle(cycles: IterationCycle[]): IterationCycle {
   return cycles.reduce((best, c) =>
     c.evaluation.aggregateScore > best.evaluation.aggregateScore ? c : best
   );
+}
+
+// ── V2: Image pipeline — runs after text passes ─────────────────────────────
+
+import { buildImagePrompt } from '../generate/prompts.js';
+import { generateImageVariants } from '../generate/image-generator.js';
+import { evaluateImage } from '../evaluate/visual-evaluator.js';
+
+/**
+ * Run the image pipeline for a passing text ad:
+ * 1. Generate an image prompt from the ad copy
+ * 2. Generate 2 image variants with different seeds
+ * 3. Evaluate each variant with Claude Sonnet vision
+ * 4. Select the higher-scoring variant
+ * 5. Compute the combined text+image score
+ *
+ * Returns null on any image pipeline failure — the text result is never lost.
+ */
+export async function runImagePipeline(
+  entry: AdLibraryEntry,
+  brief: AdBrief,
+): Promise<CombinedAdEntry | null> {
+  try {
+    // 1. Generate image prompt from ad copy
+    console.log(`  [${brief.id}] Generating image prompt...`);
+    const imagePromptText = await buildImagePrompt(entry.ad, brief);
+
+    // 2. Generate image variants
+    const variantCount = parseInt(process.env['IMAGE_VARIANTS'] ?? '2');
+    console.log(`  [${brief.id}] Generating ${variantCount} image variants...`);
+    const imageResults = await generateImageVariants(imagePromptText, variantCount);
+
+    // 3. Evaluate each variant
+    const variants: AdVariant[] = [];
+    for (let i = 0; i < imageResults.length; i++) {
+      const imageResult = imageResults[i]!;
+      console.log(`  [${brief.id}] Evaluating variant ${i + 1}/${imageResults.length}...`);
+      const visualEvaluation = await evaluateImage(imageResult.localPath, entry.ad, brief);
+      variants.push({ imageResult, visualEvaluation });
+      console.log(
+        `  [${brief.id}] Variant ${i + 1}: visual_score=${visualEvaluation.aggregateScore} ` +
+        `weakest=${visualEvaluation.weakestDimension.dimension}(${visualEvaluation.weakestDimension.score})`,
+      );
+    }
+
+    // 4. Select best variant (highest aggregate score, first wins on tie)
+    const selectedVariant = variants.reduce((best, v) =>
+      v.visualEvaluation.aggregateScore > best.visualEvaluation.aggregateScore ? v : best,
+    );
+
+    // 5. Compute combined score
+    const textScore = entry.evaluation.aggregateScore;
+    const imageScore = selectedVariant.visualEvaluation.aggregateScore;
+    const combinedScore = Math.round(
+      (textScore * TEXT_SCORE_WEIGHT + imageScore * IMAGE_SCORE_WEIGHT) * 10,
+    ) / 10;
+
+    console.log(
+      `  [${brief.id}] Combined: text=${textScore} × ${TEXT_SCORE_WEIGHT} + ` +
+      `image=${imageScore} × ${IMAGE_SCORE_WEIGHT} = ${combinedScore}`,
+    );
+
+    return {
+      ...entry,
+      selectedVariant,
+      allVariants: variants,
+      combinedScore,
+      textScoreWeight: TEXT_SCORE_WEIGHT,
+      imageScoreWeight: IMAGE_SCORE_WEIGHT,
+    };
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    console.warn(
+      `  [${brief.id}] Image pipeline failed (text result preserved): ${message}`,
+    );
+    return null;
+  }
 }
