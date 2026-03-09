@@ -313,3 +313,27 @@ Raising to 8.5 forces most ads through the full 5-cycle iteration, generating ri
 
 ---
 
+## Decision 21: Ad copy passed as text context alongside the image, not embedded in it
+
+**Decision:** The visual evaluator receives the ad copy (primary text + headline) as text in the user prompt alongside the base64 image. The evaluator uses this to score text-image coherence — whether the image reinforces the copy's message.
+
+**Alternatives considered:** Evaluate the image in isolation without copy context; composite the text onto the image before evaluation; pass the full brief instead of just the copy.
+
+**Rationale:** Text-image coherence is one of the three visual dimensions and cannot be scored without knowing what the copy says. Passing copy as structured text (not rendered into the image) is cleaner — it avoids introducing rendering artifacts that might confuse the evaluator, and it separates the visual quality signal from text legibility. The full brief is not passed because the evaluator should judge what the audience _sees_ (copy + image), not the internal generation context (audience segment, hook type). The audience and campaign goal are included as lightweight context to calibrate brand expectations.
+
+**Result:** _Fill in after first visual evaluation run._
+
+---
+
+## Decision 22: Magic-byte media type detection over file extension
+
+**Decision:** The visual evaluator detects JPEG vs PNG by inspecting the first byte of the file buffer (0x89 = PNG, else JPEG) rather than parsing the file extension.
+
+**Alternatives considered:** Always assume JPEG since the image generator saves as .jpg; parse the file extension with `path.extname()`.
+
+**Rationale:** Flux Schnell may return PNG or JPEG depending on model configuration, and the fal.ai SDK doesn't guarantee format. The file extension is set by our code (always `.jpg`), so it's unreliable as a format indicator. Magic byte detection is a single-byte check that's correct for both formats and costs nothing. The Anthropic vision API requires the correct `media_type` — sending `image/jpeg` for a PNG payload would cause a silent evaluation failure.
+
+**Result:** _Immediate — handles both formats correctly regardless of file extension._
+
+---
+
