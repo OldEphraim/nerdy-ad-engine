@@ -461,3 +461,15 @@ Raising to 8.5 forces most ads through the full 5-cycle iteration, generating ri
 **Result:** _Fill in after v3 production run._
 
 ---
+
+## Decision 33: Ratchet examples are appended to static few-shot examples, not a replacement
+
+**Decision:** `buildEnrichedSystemPrompt` appends ratchet pool examples after the 3 good + 1 bad static examples, rather than replacing the static examples with ratchet entries.
+
+**Alternatives considered:** Replace static examples entirely with ratchet pool entries when ≥ 3 qualifying entries exist (as originally specified in CLAUDE.md Step 3).
+
+**Rationale:** Additive context is strictly better for generation quality — the static examples remain as a reliable baseline that is always present regardless of ratchet pool state, while ratchet entries provide the dynamic "standards only go up" signal on top of them. Replacement would risk degrading output on early briefs before the pool fills, or if the pool fills with stylistically similar ads. The prompt length increase is modest (3 additional examples at most) and well within Haiku's context window.
+
+**Result:** _Fill in after v3 production run._
+
+---

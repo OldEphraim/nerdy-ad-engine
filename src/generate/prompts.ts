@@ -124,6 +124,81 @@ SPECIFIC INSTRUCTION: ${interventionStrategy}
 Generate an improved version. Rewrite completely — the previous version is reference only, not a starting point. JSON only.`;
 }
 
+// ── V3: Coherence Revision + Copy Refinement Prompts ────────────────────────
+
+/**
+ * Build a revised Flux image prompt addressing a specific coherence failure.
+ * Used by the coherence loop when text_image_coherence is the weakest dimension.
+ */
+export function buildCoherenceRevisionPrompt(
+  ad: GeneratedAd,
+  brief: AdBrief,
+  originalPrompt: string,
+  coherenceRationale: string,
+): string {
+  const audienceDesc = AUDIENCE_DESCRIPTIONS[brief.audience];
+
+  return `REVISION NEEDED — the previous image failed to visually reinforce the ad copy.
+
+ORIGINAL IMAGE PROMPT (what was tried):
+${originalPrompt}
+
+WHY IT FAILED (evaluator's coherence rationale):
+${coherenceRationale}
+
+AD COPY (what the image MUST reinforce):
+- Primary text: "${ad.primaryText}"
+- Headline: "${ad.headline}"
+
+AUDIENCE: ${brief.audience.replace(/_/g, ' ')} — ${audienceDesc}
+
+YOUR TASK: Write a NEW image prompt that directly visualizes the copy's core message.
+Do not repeat the original prompt. Address the specific coherence failure above.
+The image should make a viewer FEEL what the copy is saying — not just be thematically related.
+
+Remember: NO text, logos, words, or numbers in the scene. Describe a candid photograph.
+Landscape composition (1.91:1 ratio). Warm, authentic UGC style.
+
+Write the revised scene description now. Single paragraph, no JSON.`;
+}
+
+/**
+ * Build a copy refinement prompt that rewrites ad copy to emotionally match the image.
+ * Used when the coherence mismatch is classified as copy-side.
+ */
+export function buildCopyRefinementPrompt(
+  ad: GeneratedAd,
+  brief: AdBrief,
+  imageDescription: string,
+  copySideSignal: string,
+): string {
+  const audienceDesc = AUDIENCE_DESCRIPTIONS[brief.audience];
+  const hookInstruction = brief.hookType ? HOOK_INSTRUCTIONS[brief.hookType] : '';
+
+  return `COPY REFINEMENT — the current ad copy does not emotionally match its image.
+
+IMAGE SCENE: ${imageDescription}
+
+COPY-SIDE MISMATCH: ${copySideSignal}
+
+CURRENT COPY (what needs to change):
+- Primary text: "${ad.primaryText}"
+- Headline: "${ad.headline}"
+- Description: "${ad.description}"
+- CTA: "${ad.ctaButton}"
+
+AUDIENCE: ${brief.audience.replace(/_/g, ' ')} — ${audienceDesc}
+CAMPAIGN GOAL: ${brief.goal}
+${brief.goal === 'awareness' ? 'Focus on emotional connection and problem awareness. CTA should be low-commitment (Learn More).' : 'Focus on driving action. Include the specific offer. CTA should be action-oriented (Sign Up, Get Started).'}
+${brief.offer ? `OFFER: ${brief.offer}` : ''}
+${brief.tone ? `TONE: ${brief.tone}` : ''}
+${hookInstruction}
+
+YOUR TASK: Rewrite the ad copy so it emotionally matches and reinforces what this image communicates to the ${brief.audience.replace(/_/g, ' ')} audience. Keep the same hook type and campaign goal. The image is fixed — adapt the copy to it.
+
+Respond ONLY with valid JSON: { "primaryText": string, "headline": string, "description": string, "ctaButton": string }`;
+}
+
 // ── V2: Image Prompt Generation ─────────────────────────────────────────────
 
 const IMAGE_PROMPT_SYSTEM = `You are an expert visual creative director specializing in Facebook/Instagram ad photography for Varsity Tutors, a premium SAT prep brand.
