@@ -4,8 +4,8 @@
 
 import * as fs from 'fs';
 import * as path from 'path';
-import type { AdLibraryEntry, CombinedAdEntry, VisualDimensionName } from '../types.js';
-import { VISUAL_DIMENSION_NAMES } from '../types.js';
+import type { AdLibraryEntry, CombinedAdEntry, CombinedAdEntryV3, RatchetEntry, VisualDimensionName } from '../types.js';
+import { VISUAL_DIMENSION_NAMES, RATCHET_MIN_SCORE, RATCHET_POOL_SIZE } from '../types.js';
 
 const DATA_DIR = path.resolve('data');
 const JSON_PATH = path.join(DATA_DIR, 'ads.json');
@@ -171,4 +171,64 @@ export function getImageStats(entries: CombinedAdEntry[]): ImageStats {
     weakestVisualDimension: weakestDim,
     avgScoreByDimension,
   };
+}
+
+// ── V3: Quality ratchet pool management ─────────────────────────────────────
+
+const RATCHET_DIR = path.resolve('data', 'ratchet');
+const RATCHET_PATH = path.join(RATCHET_DIR, 'top-ads.json');
+
+function loadRatchetPool(): RatchetEntry[] {
+  try {
+    if (fs.existsSync(RATCHET_PATH)) {
+      return JSON.parse(fs.readFileSync(RATCHET_PATH, 'utf-8')) as RatchetEntry[];
+    }
+  } catch {
+    // Corrupted file — start fresh
+  }
+  return [];
+}
+
+function writeRatchetPool(pool: RatchetEntry[]): void {
+  if (!fs.existsSync(RATCHET_DIR)) {
+    fs.mkdirSync(RATCHET_DIR, { recursive: true });
+  }
+  fs.writeFileSync(RATCHET_PATH, JSON.stringify(pool, null, 2), 'utf-8');
+}
+
+/**
+ * Update the quality ratchet pool with a new entry.
+ * - Adds entry if combinedScore >= RATCHET_MIN_SCORE
+ * - Evicts lowest scorer if pool exceeds RATCHET_POOL_SIZE
+ * - Never evicts if pool would drop below 3 entries
+ * - Called synchronously from the main loop (no concurrency issues)
+ */
+export function updateRatchetPool(entry: CombinedAdEntryV3): void {
+  if (entry.combinedScore < RATCHET_MIN_SCORE) {
+    return;
+  }
+
+  const pool = loadRatchetPool();
+
+  const ratchetEntry: RatchetEntry = {
+    ad: entry.ad,
+    evaluation: entry.evaluation,
+    combinedScore: entry.combinedScore,
+    selectedAt: new Date().toISOString(),
+  };
+
+  pool.push(ratchetEntry);
+
+  // Evict lowest scorer if over capacity, but never below 3
+  if (pool.length > RATCHET_POOL_SIZE && pool.length > 3) {
+    pool.sort((a, b) => b.combinedScore - a.combinedScore);
+    pool.length = Math.max(RATCHET_POOL_SIZE, 3);
+  }
+
+  writeRatchetPool(pool);
+}
+
+/** Read the current ratchet pool (for stats/reporting). */
+export function readRatchetPool(): RatchetEntry[] {
+  return loadRatchetPool();
 }

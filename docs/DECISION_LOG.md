@@ -473,3 +473,27 @@ Raising to 8.5 forces most ads through the full 5-cycle iteration, generating ri
 **Result:** _Fill in after v3 production run._
 
 ---
+
+## Decision 34: Text-only fallback path in editor.ts uses `null as never` for selectedVariant
+
+**Decision:** When the image pipeline is disabled or fails, `editor.ts` still returns a `CombinedAdEntryV3` with `selectedVariant: null as never` rather than introducing a separate return type or a union type.
+
+**Alternatives considered:** Return `AdLibraryEntry` (v1 type) when images are unavailable; define a `TextOnlyAdEntryV3` union variant without `selectedVariant`; make `selectedVariant` optional on `CombinedAdEntry`.
+
+**Rationale:** A single return type contract means callers never need to handle two cases at the type level — every successful `edit()` call returns a `CombinedAdEntryV3` with coherence loop and copy refinement fields populated (as not-triggered defaults). The inherited `CombinedAdEntry` type requires `selectedVariant` to be non-null, which is correct for the normal image pipeline path. The text-only fallback sets `imageScoreWeight: 0` and `allVariants: []` as additional signals. Callers should check `imageScoreWeight === 0` or `allVariants.length === 0` to detect text-only entries rather than checking `selectedVariant` for null, since the type system doesn't permit null there. `null as never` is an explicit cast that documents the compromise — it's a known escape hatch, not a hidden bug.
+
+**Result:** _Immediate — type-checks pass, callers handle text-only entries via imageScoreWeight check._
+
+---
+
+## Decision 35: isCombinedAdEntryV3 type guard checks coherenceLoop and copyRefinement fields
+
+**Decision:** The `isCombinedAdEntryV3` type guard in `index.ts` checks for `'coherenceLoop' in entry && 'copyRefinement' in entry` to distinguish v3 entries from v1/v2 entries in a mixed library.
+
+**Alternatives considered:** Check a `version` field on the entry; check for `agentTrace`; check for `ratchetExamplesUsed`.
+
+**Rationale:** `coherenceLoop` and `copyRefinement` are the two fields that uniquely define v3 — they're the core new data structures that don't exist on `AdLibraryEntry` or `CombinedAdEntry`. Checking both fields provides a double-confirmation that the entry is genuinely v3-shaped, not a partial object that happens to have one field. A version field would be cleaner but would require modifying the base types (which are marked COMPLETE). `agentTrace` alone would be insufficient since it doesn't confirm the v3 pipeline actually ran. The `in` operator check is a standard TypeScript type guard pattern that works correctly with the `entry is CombinedAdEntryV3` predicate for narrowing in the summary stats block.
+
+**Result:** _Immediate — correctly filters v3 entries for summary stats without false positives from v1/v2 data._
+
+---
