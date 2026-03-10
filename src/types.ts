@@ -159,3 +159,64 @@ export const IMAGE_SCORE_WEIGHT = parseFloat(process.env['IMAGE_SCORE_WEIGHT'] ?
 
 // Cost per image for Flux Schnell on fal.ai
 export const FLUX_SCHNELL_COST_PER_IMAGE = 0.003;
+
+// ── V3: Coherence Loop, Copy Refinement, Quality Ratchet, Agentic Types ───
+
+export const COHERENCE_THRESHOLD = parseFloat(process.env['COHERENCE_THRESHOLD'] ?? '7.5');
+export const COPY_REFINEMENT_THRESHOLD = parseFloat(process.env['COPY_REFINEMENT_THRESHOLD'] ?? '7.0');
+export const RATCHET_MIN_SCORE = parseFloat(process.env['RATCHET_MIN_SCORE'] ?? '8.0');
+export const RATCHET_POOL_SIZE = parseInt(process.env['RATCHET_POOL_SIZE'] ?? '10', 10);
+
+export interface CompetitorInsights {
+  dominantHooks: string[];
+  ctaPatterns: string[];
+  emotionalAngles: string[];
+  freshInsights: string[];
+  fetchedAt: string;   // ISO timestamp
+}
+
+export interface EnrichedBrief extends AdBrief {
+  ratchetExamples: RatchetEntry[];
+  competitorInsights: CompetitorInsights;
+}
+
+export interface RatchetEntry {
+  ad: GeneratedAd;
+  evaluation: EvaluationResult;
+  combinedScore: number;
+  selectedAt: string;
+}
+
+export interface CoherenceLoopResult {
+  triggered: boolean;
+  triggerScore: number;
+  triggerRationale: string;
+  revisedPrompt: string;
+  variant3: AdVariant | null;
+  variant3Score: number | null;
+  improved: boolean;
+  costUsd: number;
+}
+
+export interface CopyRefinementResult {
+  triggered: boolean;
+  copySideSignal: string | null;
+  originalCopy: string;
+  refinedAd: GeneratedAd | null;
+  refinedTextScore: number | null;
+  refinedCombinedScore: number | null;
+  improved: boolean;
+  costUsd: number;
+}
+
+export interface CombinedAdEntryV3 extends CombinedAdEntry {
+  coherenceLoop: CoherenceLoopResult;
+  copyRefinement: CopyRefinementResult;
+  ratchetExamplesUsed: number;
+  competitorInsightsUsed: boolean;
+  agentTrace: {
+    researcherMs: number;
+    writerMs: number;
+    editorMs: number;
+  };
+}

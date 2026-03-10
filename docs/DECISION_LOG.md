@@ -378,3 +378,86 @@ Raising to 8.5 forces most ads through the full 5-cycle iteration, generating ri
 
 ---
 
+## Decision 26: Coherence loop as single retry, not multi-cycle
+
+**Decision:** When text_image_coherence is the weakest visual dimension and scores below 7.5, generate exactly one revised image variant (variant 3) using the evaluator's coherence rationale. No multi-cycle iteration for images.
+
+**Alternatives considered:** Run the coherence loop for N cycles (analogous to the text iteration loop); skip image-side intervention entirely and rely only on A/B selection.
+
+**Rationale:** A single targeted revision is the most likely to help — the evaluator's rationale gives specific, actionable feedback ("the image shows a generic classroom but the copy talks about one-on-one mentorship"), and a revised prompt addressing that specific gap should produce a better-aligned image on the first try. There's no structured per-cycle feedback mechanism for images the way there is for text dimensions, so multi-cycle iteration would be groping in the dark after the first revision. Multi-cycle would also roughly triple image cost ($0.009/ad instead of $0.003 for the third variant alone) with unclear ceiling — the text iteration data from the 8.5 calibration run showed diminishing returns after cycle 2-3, and images have even less structured feedback to work with. One shot, targeted, move on.
+
+**Result:** _Fill in after v3 production run._
+
+---
+
+## Decision 27: Copy refinement requires copy-side signal detection, not just low coherence
+
+**Decision:** Before triggering copy refinement, run a Haiku classification call to determine whether the coherence mismatch is image-side, copy-side, or both. Only regenerate copy when the signal is copy-side or both.
+
+**Alternatives considered:** Trigger copy refinement on any low coherence score (simpler logic, no extra API call); always regenerate both copy and image when coherence is low.
+
+**Rationale:** Low coherence can be image-side — the coherence loop already addresses that by generating a revised variant. If the image loop didn't recover coherence, it doesn't automatically mean the copy is the problem. Copy refinement should only fire when the evaluator explicitly identifies the copy as the source of the mismatch — for example, "the image is warm and relational but the copy is clinical and feature-driven." Triggering on any low score would cause unnecessary copy regeneration on image-side failures, burning tokens and potentially degrading good copy. The classification call is cheap (~$0.001 on Haiku at temp 0) and prevents the more expensive copy+re-evaluation cycle from firing unnecessarily.
+
+**Result:** _Fill in after v3 production run._
+
+---
+
+## Decision 28: Coherence threshold 7.5, copy refinement threshold 7.0
+
+**Decision:** The coherence loop triggers when text_image_coherence < 7.5. Copy refinement triggers only if coherence is still < 7.0 after the image loop resolves.
+
+**Alternatives considered:** Same threshold for both (e.g., 7.0 for both, or 7.5 for both); a single threshold with both loops running simultaneously.
+
+**Rationale:** The coherence loop should fire early — intervening at 7.5 catches moderate mismatches before they become severe. It's a relatively cheap operation (one image generation + one visual evaluation). Copy refinement fires only if the image loop didn't recover coherence to an acceptable level — meaning the problem is genuinely copy-side and requires the more expensive cycle of copy regeneration + text re-evaluation + visual re-evaluation. The 0.5-point gap between thresholds creates a "buffer zone" where the image loop alone is considered sufficient. Both thresholds are env-configurable so they can be tuned after the production run.
+
+**Result:** _Fill in after v3 production run._
+
+---
+
+## Decision 29: Researcher uses Anthropic web search + Sonnet, not a scraper
+
+**Decision:** The Researcher agent uses the Anthropic API with the `web_search_20250305` tool enabled on `claude-sonnet-4-5` to analyze current competitor ad patterns, rather than building a headless browser scraper for the Meta Ad Library.
+
+**Alternatives considered:** Puppeteer/Playwright headless browser scraping of the Meta Ad Library; manual extraction of competitor patterns into a static JSON file; skip competitive intelligence entirely.
+
+**Rationale:** Web search through the Anthropic tool is sandboxed and fast — no browser automation setup, no dependency on Chrome/Puppeteer, no flaky CSS selectors. Sonnet's reasoning over search results is more useful than raw HTML parsing — it can identify patterns, summarize themes, and extract structured intelligence in a single call. Meta's Ad Library actively blocks automated scraping with rate limits and CAPTCHA challenges, so a headless browser approach would be fragile in production. The fallback to `data/reference-ads.json` ensures the pipeline never blocks on web search failures.
+
+**Result:** _Fill in after v3 production run._
+
+---
+
+## Decision 30: Researcher caches competitive intelligence within a run
+
+**Decision:** Competitive intelligence is fetched once per run and cached in memory. All 75 briefs share the same `CompetitorInsights` object.
+
+**Alternatives considered:** Fetch fresh intelligence per brief (75 × web search calls); fetch per audience segment (3 × web search calls); no caching with deduplication.
+
+**Rationale:** 75 × Sonnet + web search calls would cost ~$0.30–0.45 for the run and add significant latency, all for essentially identical data — competitor patterns in the Meta Ad Library don't change within the ~30 minutes a single run takes. A single fetch amortizes the cost across all briefs (~$0.004 total). The cache is in-memory only (not persisted to disk between runs) so each run starts with fresh intelligence. If the web search call fails, the fallback to `data/reference-ads.json` ensures generation still has competitive context, just not live data.
+
+**Result:** _Fill in after v3 production run._
+
+---
+
+## Decision 31: Ratchet updates mid-run, not end-of-run
+
+**Decision:** The ratchet pool (`data/ratchet/top-ads.json`) is updated after each brief completes, not batched at the end of the run.
+
+**Alternatives considered:** Batch-update the pool after all 75 briefs complete; update the pool at fixed intervals (every 10 briefs).
+
+**Rationale:** Mid-run updates are the entire point of the quality ratchet — later briefs benefit from earlier results in the same run. If the 5th brief produces a 9.2-scoring ad, the 6th brief's generator sees that as a few-shot example, raising the quality floor. This is the compound improvement mechanic working as intended. Batch-update would mean all 75 briefs see the same (possibly stale) pool from the previous run. The write is synchronous and sequential (called from the main loop, not concurrent workers), so there's no race condition risk. The pool file is small (10 entries max) so disk I/O is negligible.
+
+**Result:** _Fill in after v3 production run._
+
+---
+
+## Decision 32: Copy refinement does not trigger another image generation pass
+
+**Decision:** After copy refinement produces new copy, the system re-evaluates text quality and visual coherence, but does NOT regenerate images to match the new copy.
+
+**Alternatives considered:** Re-run the full image pipeline after copy changes (new prompt → new variants → new evaluation); run a single "touch-up" image variant with the new copy context.
+
+**Rationale:** Bounding the feedback loop is critical. A copy → image → copy → image cycle could run indefinitely without a convergence guarantee — each change potentially invalidates the other side's alignment. The v3 design makes one pass in each direction (image loop → copy refinement) and stops. If the refined copy still doesn't perfectly match the image, that's acceptable — the ratchet pool captures the best result and the next run's generation starts from a higher baseline. Cross-run improvement compounds through the ratchet; within-run improvement is bounded to prevent runaway costs and infinite loops.
+
+**Result:** _Fill in after v3 production run._
+
+---
