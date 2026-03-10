@@ -254,7 +254,7 @@ Raising to 8.5 forces most ads through the full 5-cycle iteration, generating ri
 
 **Rationale:** Haiku's vision capability is insufficient for nuanced brand assessment. Testing showed Haiku vision tends to describe image content literally rather than evaluate it against brand criteria. Sonnet costs more but visual evaluation is called only twice per ad (once per variant), so the cost delta is ~$0.006/ad — acceptable given the quality difference. Determinism principle is unchanged: temperature 0 for all evaluators.
 
-**Result:** Sonnet visual evaluation produced substantive, well-calibrated rationales. The text-image coherence dimension averaged 9.0 — noticeably higher and more nuanced than what Haiku vision produces in informal testing. Cost came in lower than estimated: ~$0.006/ad for visual evaluation (both variants), making total v2 cost ~$0.0105/ad vs the $0.019 estimate.
+**Result:** Validated. Sonnet vision produced substantive rationales and text-image coherence scores averaging 9.0 — clearly superior to Haiku vision in informal testing. Actual cost: $0.0225/ad for visual evaluation (150 Sonnet vision calls across 75 ads). Note: the pipeline's in-run cost summary undercounted Sonnet tokens and reported ~$0.006/ad — the correct figure was computed post-run from token counts in the JSON output.
 
 ---
 

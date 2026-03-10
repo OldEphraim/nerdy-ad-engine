@@ -42,21 +42,29 @@ Rubric anchors at 1, 5, 7, and 10 calibrate the evaluator — the 7-anchor is th
 ad-engine/
 ├── src/
 │   ├── generate/
-│   │   ├── briefs.ts        # 24 base briefs × 3 runs = 75 pipeline entries
-│   │   ├── generator.ts     # Anthropic SDK, temperature=0.7
-│   │   └── prompts.ts       # Few-shot system prompt + brief injection
+│   │   ├── briefs.ts           # 24 base briefs × 3 runs = 75 pipeline entries
+│   │   ├── generator.ts        # Anthropic SDK, temperature=0.7
+│   │   ├── prompts.ts          # Few-shot system prompt + buildImagePrompt()
+│   │   └── image-generator.ts  # fal.ai Flux Schnell integration (v2)
 │   ├── evaluate/
-│   │   ├── evaluator.ts     # Anthropic SDK, temperature=0 (deterministic)
-│   │   └── dimensions.ts    # Rubric definitions with 4-level score anchors
+│   │   ├── evaluator.ts        # Anthropic SDK, temperature=0 (deterministic)
+│   │   ├── dimensions.ts       # Rubric definitions with 4-level score anchors
+│   │   └── visual-evaluator.ts # Claude Sonnet vision evaluation (v2)
 │   ├── iterate/
-│   │   ├── loop.ts          # generate → evaluate → regenerate cycle
-│   │   └── strategies.ts    # Per-dimension improvement prompts
+│   │   ├── loop.ts             # Text iteration + runImagePipeline() (v2)
+│   │   └── strategies.ts       # Per-dimension improvement prompts
 │   ├── output/
-│   │   ├── library.ts       # JSON + CSV persistence (incremental writes)
-│   │   └── trends.ts        # Per-brief quality improvement trajectory
-│   ├── index.ts             # Entry point: concurrency=5, cost tracking
-│   └── types.ts             # Shared interfaces, constants, cost utilities
-├── dashboard/               # Next.js app: ad library + trend visualization
+│   │   ├── library.ts          # JSON + CSV persistence (incremental writes)
+│   │   └── trends.ts           # Per-brief quality improvement trajectory
+│   ├── index.ts                # Entry point: concurrency=5, cost tracking
+│   └── types.ts                # Shared interfaces, constants, cost utilities
+├── dashboard/
+│   └── app/
+│       ├── page.tsx            # Ad library with image thumbnails (v2)
+│       ├── trends/page.tsx     # Quality trend visualization
+│       └── api/
+│           ├── ads/route.ts    # Ad data API with image stats (v2)
+│           └── images/[id]/route.ts  # Serves local image files (v2)
 ├── data/
 │   ├── ads.json             # Generated library (gitignored)
 │   ├── images/              # Generated images (gitignored — run pnpm generate to recreate)
@@ -107,14 +115,16 @@ pnpm dashboard
 ## Testing
 
 ```bash
-pnpm test              # Run all 41 tests
+pnpm test              # Run all 55 tests
 pnpm test:coverage     # Run with coverage report
 ```
 
-The test suite covers three layers:
+The test suite covers four layers:
 
 - **Unit tests** — brief generation, cost estimation, quality trend calculation, JSON parsing edge cases (markdown fences, missing fields, malformed output)
 - **Spec compliance** — reads from `data/ads.json` and asserts the library meets all spec requirements: ≥50 ads, all 5 dimensions scored, scores within 1–10, aggregate matches weighted sum, at least one multi-cycle ad, trend shows improvement
+- **V2 image pipeline** — reads from `data/runs/v2-production.json` and validates: every combined entry has image results and 3 visual dimension scores, combined score = text × 0.6 + image × 0.4, selected variant is the higher-scoring of the two, weights sum to 1.0
+- **Visual evaluator** — mocked Anthropic SDK tests for the visual evaluation module: score shape validation, aggregate computation, threshold boundary behavior, weakest dimension identification, JPEG/PNG media type detection from magic bytes
 - **Architecture** — verifies offer rotation across runs of the same brief, all 24 base brief combinations represented
 
 ---
@@ -154,9 +164,9 @@ pnpm dashboard
 # Opens at http://localhost:3000
 ```
 
-- **Ad Library** (`/`): Full table of passing ads, sortable by score. Dimension bars use green for ≥8.0, orange for 7.0–7.9, red for <7.0.
+- **Ad Library** (`/`): Full table of passing ads, sortable by score. Dimension bars use green for ≥8.0, orange for 7.0–7.9, red for <7.0. V2 adds a Combined Score column and image pipeline stats summary.
 - **Trends** (`/trends`): Line chart showing average score by iteration cycle — visual proof the loop improves quality.
-- **Ad Detail**: Click any row for full copy, per-dimension scores with evaluator rationale, and intervention history.
+- **Ad Detail**: Click any row for full copy, per-dimension scores with evaluator rationale, and intervention history. V2 adds image thumbnails, combined score breakdown, and visual dimension scores (brand consistency, visual engagement, text-image coherence).
 
 ---
 
@@ -178,14 +188,14 @@ All costs use Claude Haiku pricing: $0.80/1M input tokens, $4.00/1M output token
 
 V2 adds an image layer after text passes. The cost breakdown per ad:
 
-| Component | Model | Cost/ad |
-|---|---|---|
-| Text pipeline (generate + evaluate + iterate) | Claude Haiku | ~$0.005 |
-| Image generation (2 variants × $0.003) | fal.ai Flux Schnell | ~$0.006 |
-| Visual evaluation (2 variants scored) | Claude Sonnet (vision) | ~$0.008 |
-| **V2 total** | | **~$0.019** |
+| Component | Model | Estimated | Actual |
+|---|---|---|---|
+| Text pipeline (generate + evaluate + iterate) | Claude Haiku | ~$0.005 | $0.0046 |
+| Image generation (2 variants × $0.003) | fal.ai Flux Schnell | ~$0.006 | $0.006 |
+| Visual evaluation (2 variants scored) | Claude Sonnet (vision) | ~$0.008 | $0.0225 |
+| **V2 total** | | **~$0.019** | **$0.0331** |
 
-V2 is approximately 4x the cost of v1 per ad. The image layer accounts for ~75% of the increase, split roughly evenly between generation and visual evaluation. Sonnet's vision capability is more expensive than Haiku but necessary for nuanced brand assessment (see Decision 15 in `DECISION_LOG.md`).
+V2 is approximately 7x the cost of v1 per ad. Visual evaluation (Claude Sonnet vision) is the largest cost component, accounting for 68% of the per-ad cost. See Decision 15 in `DECISION_LOG.md` for model choice rationale.
 
 ---
 

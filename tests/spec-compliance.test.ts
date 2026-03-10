@@ -1,10 +1,17 @@
 import { describe, it, expect } from 'vitest';
-import { readAdLibrary } from '../src/output/library.js';
+import { readAdLibrary, isCombinedAdEntry } from '../src/output/library.js';
 import { getQualityTrend } from '../src/output/trends.js';
-import { DIMENSION_NAMES, DIMENSION_WEIGHTS } from '../src/types.js';
+import { DIMENSION_NAMES, DIMENSION_WEIGHTS, VISUAL_DIMENSION_NAMES, TEXT_SCORE_WEIGHT, IMAGE_SCORE_WEIGHT } from '../src/types.js';
+import type { AdLibraryEntry, CombinedAdEntry } from '../src/types.js';
 import * as fs from 'fs';
 
 const library = readAdLibrary();
+
+// Load v2 production run for image pipeline tests
+const v2Library: AdLibraryEntry[] = fs.existsSync('data/runs/v2-production.json')
+  ? JSON.parse(fs.readFileSync('data/runs/v2-production.json', 'utf-8')) as AdLibraryEntry[]
+  : [];
+const v2Combined = v2Library.filter(isCombinedAdEntry);
 
 // ── COVERAGE ──────────────────────────────────────────────────────────────
 describe('Coverage', () => {
@@ -151,5 +158,75 @@ describe('Output Files', () => {
   it('LIMITATIONS.md exists and is substantive (>200 chars)', () => {
     expect(fs.existsSync('docs/LIMITATIONS.md')).toBe(true);
     expect(fs.readFileSync('docs/LIMITATIONS.md', 'utf-8').length).toBeGreaterThan(200);
+  });
+});
+
+// ── V2: IMAGE PIPELINE ────────────────────────────────────────────────────
+describe('V2: Image Pipeline', () => {
+  it('v2-production.json exists and has ≥50 entries', () => {
+    expect(fs.existsSync('data/runs/v2-production.json')).toBe(true);
+    expect(v2Library.length).toBeGreaterThanOrEqual(50);
+  });
+
+  it('every combined entry has an image result with localPath', () => {
+    for (const entry of v2Combined) {
+      expect(entry.selectedVariant).toBeDefined();
+      expect(entry.selectedVariant.imageResult).toBeDefined();
+      expect(entry.selectedVariant.imageResult.localPath).toBeTruthy();
+    }
+  });
+
+  it('every combined entry has a visual evaluation with 3 dimensions', () => {
+    for (const entry of v2Combined) {
+      const scores = entry.selectedVariant.visualEvaluation.scores;
+      expect(scores.length).toBe(3);
+      const dims = scores.map(s => s.dimension);
+      for (const required of VISUAL_DIMENSION_NAMES) {
+        expect(dims).toContain(required);
+      }
+    }
+  });
+
+  it('all visual scores are in valid 1–10 range', () => {
+    for (const entry of v2Combined) {
+      for (const score of entry.selectedVariant.visualEvaluation.scores) {
+        expect(score.score).toBeGreaterThanOrEqual(1);
+        expect(score.score).toBeLessThanOrEqual(10);
+      }
+    }
+  });
+
+  it('combinedScore = text × 0.6 + image × 0.4 within ±0.05', () => {
+    for (const entry of v2Combined) {
+      const textScore = entry.evaluation.aggregateScore;
+      const imageScore = entry.selectedVariant.visualEvaluation.aggregateScore;
+      const expected = textScore * TEXT_SCORE_WEIGHT + imageScore * IMAGE_SCORE_WEIGHT;
+      expect(Math.abs(entry.combinedScore - expected)).toBeLessThanOrEqual(0.05);
+    }
+  });
+
+  it('selectedVariant is the higher-scoring of the two variants', () => {
+    for (const entry of v2Combined) {
+      if (entry.allVariants.length < 2) continue;
+      const selectedScore = entry.selectedVariant.visualEvaluation.aggregateScore;
+      for (const variant of entry.allVariants) {
+        expect(selectedScore).toBeGreaterThanOrEqual(variant.visualEvaluation.aggregateScore);
+      }
+    }
+  });
+
+  it('every variant has generation cost and timing tracked', () => {
+    for (const entry of v2Combined) {
+      for (const variant of entry.allVariants) {
+        expect(variant.imageResult.costUsd).toBeGreaterThan(0);
+        expect(variant.imageResult.generationTimeMs).toBeGreaterThan(0);
+      }
+    }
+  });
+
+  it('textScoreWeight and imageScoreWeight sum to 1.0', () => {
+    for (const entry of v2Combined) {
+      expect(entry.textScoreWeight + entry.imageScoreWeight).toBeCloseTo(1.0, 5);
+    }
   });
 });
