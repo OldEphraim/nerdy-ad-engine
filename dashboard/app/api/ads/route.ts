@@ -44,6 +44,21 @@ interface AdVariant {
   visualEvaluation: VisualEval;
 }
 
+interface CoherenceLoop {
+  triggered: boolean;
+  triggerScore: number;
+  triggerRationale: string;
+  improved: boolean;
+  costUsd: number;
+}
+
+interface CopyRefinement {
+  triggered: boolean;
+  copySideSignal: string | null;
+  improved: boolean;
+  costUsd: number;
+}
+
 interface AdEntry {
   ad: { id: string; briefId: string };
   evaluation: { aggregateScore: number; scores: DimensionScore[] };
@@ -54,6 +69,11 @@ interface AdEntry {
   combinedScore?: number;
   textScoreWeight?: number;
   imageScoreWeight?: number;
+  // V3 fields (present on CombinedAdEntryV3)
+  coherenceLoop?: CoherenceLoop;
+  copyRefinement?: CopyRefinement;
+  ratchetExamplesUsed?: number;
+  competitorInsightsUsed?: boolean;
 }
 
 export async function GET(request: NextRequest) {
@@ -130,12 +150,23 @@ export async function GET(request: NextRequest) {
   const combinedEntries = ads.filter((a) => a.selectedVariant != null);
   const imageStats = computeImageStats(combinedEntries);
 
+  // V3: Compute coherence/copy refinement stats
+  const v3Entries = ads.filter((a) => a.coherenceLoop != null);
+  const v3Stats = v3Entries.length > 0 ? {
+    total: v3Entries.length,
+    coherenceTriggered: v3Entries.filter((e) => e.coherenceLoop!.triggered).length,
+    coherenceImproved: v3Entries.filter((e) => e.coherenceLoop!.improved).length,
+    copyRefTriggered: v3Entries.filter((e) => e.copyRefinement?.triggered).length,
+    copyRefImproved: v3Entries.filter((e) => e.copyRefinement?.improved).length,
+  } : null;
+
   return NextResponse.json({
     ads: annotatedAds,
     trend,
     stats: { passingCount, avgCyclesToConverge },
     dimAverages,
     imageStats,
+    v3Stats,
     availableRuns: listRuns(dataDir),
   });
 }

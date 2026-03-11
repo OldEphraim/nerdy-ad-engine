@@ -19,10 +19,19 @@ interface TrendPoint {
   adCount: number;
 }
 
+interface V3Stats {
+  total: number;
+  coherenceTriggered: number;
+  coherenceImproved: number;
+  copyRefTriggered: number;
+  copyRefImproved: number;
+}
+
 interface ApiResponse {
   ads: Array<{ evaluation: { aggregateScore: number }; iterationHistory: { cycles: unknown[] } }>;
   trend: TrendPoint[];
   stats: { passingCount: number; avgCyclesToConverge: number };
+  v3Stats?: V3Stats;
 }
 
 const THRESHOLD = 7.0;
@@ -34,6 +43,7 @@ export default function TrendsPage() {
   const [totalAds, setTotalAds] = useState(0);
   const [passingCount, setPassingCount] = useState(0);
   const [avgCycles, setAvgCycles] = useState(0);
+  const [v3Stats, setV3Stats] = useState<V3Stats | null>(null);
 
   useEffect(() => {
     setLoading(true);
@@ -45,6 +55,7 @@ export default function TrendsPage() {
         setTotalAds(data.ads.length);
         setPassingCount(data.stats.passingCount);
         setAvgCycles(data.stats.avgCyclesToConverge);
+        setV3Stats(data.v3Stats ?? null);
         setLoading(false);
       });
   }, [selectedRun]);
@@ -83,6 +94,28 @@ export default function TrendsPage() {
           value={avgCycles > 0 ? avgCycles.toFixed(1) : "—"}
         />
       </div>
+
+      {/* V3: Loop stats */}
+      {v3Stats && (
+        <div className="mb-8 grid gap-4 sm:grid-cols-4">
+          <StatCard
+            label="Coherence Loop Triggered"
+            value={`${v3Stats.coherenceTriggered}/${v3Stats.total} (${v3Stats.total > 0 ? Math.round(v3Stats.coherenceTriggered / v3Stats.total * 100) : 0}%)`}
+          />
+          <StatCard
+            label="Coherence Loop Improved"
+            value={`${v3Stats.coherenceImproved}/${v3Stats.coherenceTriggered} (${v3Stats.coherenceTriggered > 0 ? Math.round(v3Stats.coherenceImproved / v3Stats.coherenceTriggered * 100) : 0}%)`}
+          />
+          <StatCard
+            label="Copy Refinement Triggered"
+            value={`${v3Stats.copyRefTriggered}/${v3Stats.total} (${v3Stats.total > 0 ? Math.round(v3Stats.copyRefTriggered / v3Stats.total * 100) : 0}%)`}
+          />
+          <StatCard
+            label="Copy Refinement Improved"
+            value={`${v3Stats.copyRefImproved}/${v3Stats.copyRefTriggered} (${v3Stats.copyRefTriggered > 0 ? Math.round(v3Stats.copyRefImproved / v3Stats.copyRefTriggered * 100) : 0}%)`}
+          />
+        </div>
+      )}
 
       {/* Chart */}
       {trend.length > 0 ? (

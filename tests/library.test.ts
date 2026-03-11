@@ -1,7 +1,10 @@
-import { describe, it, expect } from 'vitest';
-import { estimateCost, COST_PER_INPUT_TOKEN, COST_PER_OUTPUT_TOKEN } from '../src/types.js';
+import { describe, it, expect, beforeEach, afterEach } from 'vitest';
+import { estimateCost, COST_PER_INPUT_TOKEN, COST_PER_OUTPUT_TOKEN, RATCHET_MIN_SCORE, RATCHET_POOL_SIZE } from '../src/types.js';
 import { getQualityTrend } from '../src/output/trends.js';
-import type { AdLibraryEntry, GeneratedAd, EvaluationResult, IterationRecord, DimensionScore } from '../src/types.js';
+import { updateRatchetPool, readRatchetPool } from '../src/output/library.js';
+import type { AdLibraryEntry, GeneratedAd, EvaluationResult, IterationRecord, DimensionScore, CombinedAdEntryV3 } from '../src/types.js';
+import * as fs from 'fs';
+import * as path from 'path';
 
 describe('estimateCost', () => {
   it('computes correctly for known token counts', () => {
@@ -147,5 +150,103 @@ describe('getQualityTrend', () => {
     expect(trend[0]!.avgScore).toBe(6.5);
     // Cycle 2: (7.1 + 7.3) / 2 = 7.2
     expect(trend[1]!.avgScore).toBe(7.2);
+  });
+});
+
+// ── V3: Ratchet Pool ────────────────────────────────────────────────────────
+
+const RATCHET_TEST_PATH = path.resolve('data', 'ratchet', 'top-ads.json');
+
+function makeV3Entry(briefId: string, combinedScore: number): CombinedAdEntryV3 {
+  const ad = makeAd(briefId, 1);
+  const evaluation = makeEval(ad.id, 7.5);
+  return {
+    ad,
+    evaluation,
+    iterationHistory: {
+      briefId,
+      cycles: [{ cycle: 1, ad, evaluation, improvementDelta: 0 }],
+      converged: true,
+      totalInputTokens: 400,
+      totalOutputTokens: 500,
+      estimatedCostUsd: estimateCost(400, 500),
+    },
+    selectedVariant: null as never,
+    allVariants: [],
+    combinedScore,
+    textScoreWeight: 0.6,
+    imageScoreWeight: 0.4,
+    coherenceLoop: {
+      triggered: false, triggerScore: 10, triggerRationale: '',
+      revisedPrompt: '', variant3: null, variant3Score: null,
+      improved: false, costUsd: 0,
+    },
+    copyRefinement: {
+      triggered: false, copySideSignal: null, originalCopy: ad.primaryText,
+      refinedAd: null, refinedTextScore: null, refinedCombinedScore: null,
+      improved: false, costUsd: 0,
+    },
+    ratchetExamplesUsed: 0,
+    competitorInsightsUsed: false,
+    agentTrace: { researcherMs: 10, writerMs: 50, editorMs: 100 },
+  };
+}
+
+describe('updateRatchetPool', () => {
+  let originalPool: string | null = null;
+
+  beforeEach(() => {
+    // Save original pool if it exists
+    if (fs.existsSync(RATCHET_TEST_PATH)) {
+      originalPool = fs.readFileSync(RATCHET_TEST_PATH, 'utf-8');
+    }
+    // Start with empty pool
+    const dir = path.dirname(RATCHET_TEST_PATH);
+    if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
+    fs.writeFileSync(RATCHET_TEST_PATH, '[]', 'utf-8');
+  });
+
+  afterEach(() => {
+    // Restore original pool
+    if (originalPool !== null) {
+      fs.writeFileSync(RATCHET_TEST_PATH, originalPool, 'utf-8');
+    } else if (fs.existsSync(RATCHET_TEST_PATH)) {
+      fs.writeFileSync(RATCHET_TEST_PATH, '[]', 'utf-8');
+    }
+  });
+
+  it('adds entries with combinedScore >= RATCHET_MIN_SCORE', () => {
+    const entry = makeV3Entry('brief-high', 8.5);
+    updateRatchetPool(entry);
+    const pool = readRatchetPool();
+    expect(pool.length).toBe(1);
+    expect(pool[0]!.combinedScore).toBe(8.5);
+  });
+
+  it('does not add entries below RATCHET_MIN_SCORE', () => {
+    const entry = makeV3Entry('brief-low', 7.0);
+    updateRatchetPool(entry);
+    const pool = readRatchetPool();
+    expect(pool.length).toBe(0);
+  });
+
+  it('ratchet pool never exceeds RATCHET_POOL_SIZE', () => {
+    // Fill pool beyond capacity
+    for (let i = 0; i < RATCHET_POOL_SIZE + 3; i++) {
+      const entry = makeV3Entry(`brief-${i}`, 8.0 + (i * 0.01));
+      updateRatchetPool(entry);
+    }
+    const pool = readRatchetPool();
+    expect(pool.length).toBeLessThanOrEqual(RATCHET_POOL_SIZE);
+  });
+
+  it('ratchet pool never drops below 3 entries', () => {
+    // Add exactly 3 entries
+    for (let i = 0; i < 3; i++) {
+      const entry = makeV3Entry(`brief-${i}`, 8.0 + i);
+      updateRatchetPool(entry);
+    }
+    const pool = readRatchetPool();
+    expect(pool.length).toBeGreaterThanOrEqual(3);
   });
 });

@@ -57,6 +57,17 @@ interface AdVariant {
   visualEvaluation: VisualEval;
 }
 
+interface CoherenceLoop {
+  triggered: boolean;
+  improved: boolean;
+  triggerScore: number;
+}
+
+interface CopyRefinement {
+  triggered: boolean;
+  improved: boolean;
+}
+
 interface AdEntry {
   ad: Ad;
   evaluation: Evaluation;
@@ -66,6 +77,11 @@ interface AdEntry {
   selectedVariant?: AdVariant;
   allVariants?: AdVariant[];
   combinedScore?: number;
+  // V3 fields
+  coherenceLoop?: CoherenceLoop;
+  copyRefinement?: CopyRefinement;
+  ratchetExamplesUsed?: number;
+  competitorInsightsUsed?: boolean;
 }
 
 interface DimAverage {
@@ -211,6 +227,7 @@ export default function AdLibrary() {
   }
 
   const passRate = entries.length > 0 ? Math.round((passingCount / entries.length) * 100) : 0;
+  const hasV3 = entries.some((e) => e.coherenceLoop != null);
 
   return (
     <div>
@@ -301,6 +318,9 @@ export default function AdLibrary() {
                   Combined {sortKey === "combined" ? (sortAsc ? "↑" : "↓") : ""}
                 </th>
               )}
+              {hasV3 && (
+                <th className="px-4 py-3">V3 Loops</th>
+              )}
               <th className="px-4 py-3 cursor-pointer hover:text-zinc-800" onClick={() => handleSort("cycles")}>
                 Cycles {sortKey === "cycles" ? (sortAsc ? "↑" : "↓") : ""}
               </th>
@@ -319,6 +339,7 @@ export default function AdLibrary() {
                   isExpanded={isExpanded}
                   onToggle={() => setExpandedId(isExpanded ? null : entry.ad.id)}
                   hasImageColumn={!!imageStats}
+                  hasV3Column={hasV3}
                 />
               );
             })}
@@ -329,20 +350,52 @@ export default function AdLibrary() {
   );
 }
 
+function V3Badges({ entry }: { entry: AdEntry }) {
+  const badges: { label: string; className: string }[] = [];
+
+  if (entry.coherenceLoop?.triggered) {
+    badges.push(entry.coherenceLoop.improved
+      ? { label: "\u2713 Coherence", className: "bg-green-100 text-green-700" }
+      : { label: "\uD83D\uDD01 Coherence", className: "bg-yellow-100 text-yellow-700" }
+    );
+  }
+
+  if (entry.copyRefinement?.triggered) {
+    badges.push(entry.copyRefinement.improved
+      ? { label: "\u2713 Copy", className: "bg-green-100 text-green-700" }
+      : { label: "\u270F\uFE0F Copy refined", className: "bg-purple-100 text-purple-700" }
+    );
+  }
+
+  if (badges.length === 0) return null;
+
+  return (
+    <div className="flex flex-wrap gap-1">
+      {badges.map((b) => (
+        <span key={b.label} className={`inline-block rounded-full px-2 py-0.5 text-xs font-medium ${b.className}`}>
+          {b.label}
+        </span>
+      ))}
+    </div>
+  );
+}
+
 function AdRow({
   entry,
   isExpanded,
   onToggle,
   hasImageColumn,
+  hasV3Column,
 }: {
   entry: AdEntry;
   isExpanded: boolean;
   onToggle: () => void;
   hasImageColumn: boolean;
+  hasV3Column: boolean;
 }) {
   const { ad, evaluation, iterationHistory } = entry;
   const score = evaluation.aggregateScore;
-  const colSpan = hasImageColumn ? 8 : 7;
+  const colSpan = (hasImageColumn ? 8 : 7) + (hasV3Column ? 1 : 0);
 
   return (
     <>
@@ -370,6 +423,11 @@ function AdRow({
             ) : (
               <span className="text-xs text-zinc-400">—</span>
             )}
+          </td>
+        )}
+        {hasV3Column && (
+          <td className="px-4 py-3">
+            <V3Badges entry={entry} />
           </td>
         )}
         <td className="px-4 py-3 text-zinc-600">{iterationHistory.cycles.length}</td>
