@@ -1,1 +1,632 @@
-[]
+[
+  {
+    "ad": {
+      "id": "6c789726-322a-4588-9812-71e2774df895",
+      "briefId": "brief-comparison_shoppers-conversion-story-run2",
+      "primaryText": "I tried Khan Academy for 3 months and barely moved from a 1090. Switched to Varsity Tutors for 1-on-1 sessions, and my tutor pinpointed exactly why I was tanking the reading section. Six weeks later, 1310. The difference? Someone actually knew how to teach me, not just give me practice tests.",
+      "headline": "From 1090 to 1310 in 6 Weeks",
+      "description": "Get your first session free. No commitment, no credit card required.",
+      "ctaButton": "Get Started",
+      "generatedAt": "2026-03-11T03:28:20.337Z",
+      "modelUsed": "claude-haiku-4-5-20251001",
+      "iterationCycle": 1,
+      "inputTokens": 1200,
+      "outputTokens": 152
+    },
+    "evaluation": {
+      "adId": "6c789726-322a-4588-9812-71e2774df895",
+      "scores": [
+        {
+          "dimension": "clarity",
+          "score": 9,
+          "rationale": "The message is immediately clear: 1-on-1 tutoring at Varsity Tutors produced a 220-point improvement where self-study failed. The narrative arc (problem → solution → result) is easy to follow on first read without any competing messages.",
+          "confidence": "high"
+        },
+        {
+          "dimension": "value_proposition",
+          "score": 9,
+          "rationale": "The value is highly specific and differentiated: personalized diagnosis of learning gaps (reading section weakness) vs. generic practice tests, with concrete proof (220-point jump in 6 weeks). This directly addresses why students fail with self-study platforms.",
+          "confidence": "high"
+        },
+        {
+          "dimension": "call_to_action",
+          "score": 8,
+          "rationale": "The CTA is clear and low-friction with strong supporting copy (free first session, no commitment, no credit card). 'Get Started' is direct, though slightly generic; specificity like 'Book Your Free Session' would push this to 9.",
+          "confidence": "medium"
+        },
+        {
+          "dimension": "brand_voice",
+          "score": 8,
+          "rationale": "The voice is authentic, knowledgeable, and empowering—a student sharing real experience rather than corporate messaging. It positions Varsity Tutors as the expert alternative to impersonal platforms, which aligns with brand positioning, though it could be slightly more distinctive.",
+          "confidence": "high"
+        },
+        {
+          "dimension": "emotional_resonance",
+          "score": 9,
+          "rationale": "The ad deeply resonates with SAT anxiety: frustration with wasted effort (3 months on Khan Academy), the specific pain of struggling with one section, and the relief of finally understanding why. The peer-to-peer testimonial format makes it feel like a friend's honest breakthrough, not marketing.",
+          "confidence": "high"
+        }
+      ],
+      "aggregateScore": 8.6,
+      "passesThreshold": true,
+      "weakestDimension": {
+        "dimension": "call_to_action",
+        "score": 8,
+        "rationale": "The CTA is clear and low-friction with strong supporting copy (free first session, no commitment, no credit card). 'Get Started' is direct, though slightly generic; specificity like 'Book Your Free Session' would push this to 9.",
+        "confidence": "medium"
+      },
+      "evaluatedAt": "2026-03-11T03:28:25.337Z",
+      "inputTokens": 1046,
+      "outputTokens": 500
+    },
+    "combinedScore": 8.6,
+    "selectedAt": "2026-03-11T03:28:49.938Z"
+  },
+  {
+    "ad": {
+      "id": "51fa522e-aa3c-4a32-b866-6bfefe6e9dcc",
+      "briefId": "brief-comparison_shoppers-awareness-story-run1",
+      "primaryText": "I tried Khan Academy for 2 months and my score barely moved. Then I switched to Varsity Tutors for 1-on-1 tutoring and went from a 1190 to a 1380 in 8 weeks. My tutor figured out I was rushing through reading and built every session around that one weakness. Wish I'd done this from the start instead of wasting time on generic courses.",
+      "headline": "One Tutor. Real Score Jumps.",
+      "description": "See how personalized 1-on-1 prep compares. Free score analysis included.",
+      "ctaButton": "Learn More",
+      "generatedAt": "2026-03-11T03:21:01.620Z",
+      "modelUsed": "claude-haiku-4-5-20251001",
+      "iterationCycle": 1,
+      "inputTokens": 1194,
+      "outputTokens": 164
+    },
+    "evaluation": {
+      "adId": "51fa522e-aa3c-4a32-b866-6bfefe6e9dcc",
+      "scores": [
+        {
+          "dimension": "clarity",
+          "score": 9,
+          "rationale": "The message is immediately clear: personalized 1-on-1 tutoring at Varsity Tutors delivers measurable score improvements. The narrative structure (problem → solution → result) is easy to follow on first read without any competing messages.",
+          "confidence": "high"
+        },
+        {
+          "dimension": "value_proposition",
+          "score": 9,
+          "rationale": "The ad delivers a highly specific, differentiated benefit: +190 point improvement in 8 weeks through personalized tutoring that identifies and targets individual weaknesses. This is concrete, quantified, and directly contrasts with the failure of a generic alternative (Khan Academy), making the value proposition exceptionally clear.",
+          "confidence": "high"
+        },
+        {
+          "dimension": "call_to_action",
+          "score": 6,
+          "rationale": "The CTA is clear and low-friction ('Learn More'), but it's generic and lacks urgency or specificity about what happens next. The description adds value ('Free score analysis included'), but the button itself doesn't leverage this incentive or create time-sensitive motivation.",
+          "confidence": "medium"
+        },
+        {
+          "dimension": "brand_voice",
+          "score": 8,
+          "rationale": "The voice is authentic, knowledgeable, and empowering—it sounds like a real student sharing genuine experience rather than corporate marketing. The tone is conversational and relatable ('Wish I'd done this from the start'), which aligns well with Varsity Tutors' positioning as a trusted, human-centered tutoring brand.",
+          "confidence": "high"
+        },
+        {
+          "dimension": "emotional_resonance",
+          "score": 9,
+          "rationale": "The ad deeply resonates with the core anxiety of SAT test-takers: wasting time on ineffective prep and feeling stuck. The narrative arc (frustration → discovery → relief/success) validates the reader's potential frustration and offers hope through a relatable peer's success story, creating strong emotional connection.",
+          "confidence": "high"
+        }
+      ],
+      "aggregateScore": 8.2,
+      "passesThreshold": true,
+      "weakestDimension": {
+        "dimension": "call_to_action",
+        "score": 6,
+        "rationale": "The CTA is clear and low-friction ('Learn More'), but it's generic and lacks urgency or specificity about what happens next. The description adds value ('Free score analysis included'), but the button itself doesn't leverage this incentive or create time-sensitive motivation.",
+        "confidence": "medium"
+      },
+      "evaluatedAt": "2026-03-11T03:21:06.680Z",
+      "inputTokens": 1059,
+      "outputTokens": 525
+    },
+    "combinedScore": 8.5,
+    "selectedAt": "2026-03-11T03:21:32.031Z"
+  },
+  {
+    "ad": {
+      "id": "7cbf491b-bd2f-46ae-be64-c38d0d9dc181",
+      "briefId": "brief-parents_anxious-conversion-story-run2",
+      "primaryText": "My daughter went from a 1090 to a 1340 in 8 weeks. We tried the big prep courses first — she was just one of thousands. Then we switched to Varsity Tutors and got matched with a tutor who actually knew where she was losing points. Every session felt like it mattered. Watching her confidence come back was worth it.",
+      "headline": "From Stressed to 1340 in 8 Weeks",
+      "description": "Get your student's first tutoring session free. No commitment, just results.",
+      "ctaButton": "Get Started",
+      "generatedAt": "2026-03-11T03:01:32.298Z",
+      "modelUsed": "claude-haiku-4-5-20251001",
+      "iterationCycle": 1,
+      "inputTokens": 1190,
+      "outputTokens": 152
+    },
+    "evaluation": {
+      "adId": "7cbf491b-bd2f-46ae-be64-c38d0d9dc181",
+      "scores": [
+        {
+          "dimension": "clarity",
+          "score": 9,
+          "rationale": "The message is immediately clear: personalized tutoring delivers measurable SAT score improvements faster than big courses. The narrative arc (problem → solution → outcome) is easy to follow on first read without any competing messages.",
+          "confidence": "high"
+        },
+        {
+          "dimension": "value_proposition",
+          "score": 9,
+          "rationale": "The ad delivers a highly specific, quantified benefit (250-point improvement in 8 weeks) with clear differentiation (personalized matching vs. being 'one of thousands'). The proof point is concrete and the emotional benefit (confidence) adds depth beyond the score.",
+          "confidence": "high"
+        },
+        {
+          "dimension": "call_to_action",
+          "score": 8,
+          "rationale": "The CTA is clear and low-friction ('Get Started'), paired with a strong incentive (free first session, no commitment). The description removes friction effectively, though it could be slightly more urgent or specific about timeline.",
+          "confidence": "high"
+        },
+        {
+          "dimension": "brand_voice",
+          "score": 8,
+          "rationale": "The voice is warm, empowering, and knowledgeable—sounding like a trusted friend sharing a success story rather than corporate marketing. The focus on personalization and student outcomes aligns well with Varsity Tutors' positioning, though it's not uniquely distinctive enough for a 9.",
+          "confidence": "high"
+        },
+        {
+          "dimension": "emotional_resonance",
+          "score": 9,
+          "rationale": "The ad authentically taps into parent anxiety (big courses failing, student stress) and aspiration (confidence returning, meaningful progress). The parent voice and focus on the emotional journey ('watching her confidence come back') creates genuine connection beyond test scores.",
+          "confidence": "high"
+        }
+      ],
+      "aggregateScore": 8.6,
+      "passesThreshold": true,
+      "weakestDimension": {
+        "dimension": "call_to_action",
+        "score": 8,
+        "rationale": "The CTA is clear and low-friction ('Get Started'), paired with a strong incentive (free first session, no commitment). The description removes friction effectively, though it could be slightly more urgent or specific about timeline.",
+        "confidence": "high"
+      },
+      "evaluatedAt": "2026-03-11T03:01:37.021Z",
+      "inputTokens": 1046,
+      "outputTokens": 476
+    },
+    "combinedScore": 8.4,
+    "selectedAt": "2026-03-11T03:02:01.246Z"
+  },
+  {
+    "ad": {
+      "id": "2eff1698-40b7-4a71-bc9d-1f505f1dbc88",
+      "briefId": "brief-students_stressed-awareness-story-run3",
+      "primaryText": "I was losing sleep over the SAT. My parents were stressed, I was stressed, and I felt like no matter how much I studied, nothing was clicking. Then my Varsity tutor spent 20 minutes figuring out that I was rushing through reading passages and missing easy points. Six weeks later, I went from a 1190 to a 1380. Not because I studied harder—because I studied smarter.",
+      "headline": "Your SAT Score Isn't Your Ceiling",
+      "description": "Get a free personalized study plan from an expert tutor.",
+      "ctaButton": "Learn More",
+      "generatedAt": "2026-03-11T03:08:59.140Z",
+      "modelUsed": "claude-haiku-4-5-20251001",
+      "iterationCycle": 1,
+      "inputTokens": 1186,
+      "outputTokens": 155
+    },
+    "evaluation": {
+      "adId": "2eff1698-40b7-4a71-bc9d-1f505f1dbc88",
+      "scores": [
+        {
+          "dimension": "clarity",
+          "score": 8,
+          "rationale": "The message is immediately clear: a tutor identified a specific problem, the student improved dramatically, and the key insight is studying smarter not harder. The narrative flows logically and the headline reinforces the core message without confusion.",
+          "confidence": "high"
+        },
+        {
+          "dimension": "value_proposition",
+          "score": 9,
+          "rationale": "The ad delivers a highly specific, quantified benefit (190-point improvement) with a concrete mechanism (personalized diagnosis of study habits) and a differentiated angle (smart studying beats hard studying). This is far more compelling than generic score improvement claims.",
+          "confidence": "high"
+        },
+        {
+          "dimension": "call_to_action",
+          "score": 6,
+          "rationale": "The CTA is clear and low-friction ('Learn More' + free personalized study plan), but it's somewhat generic and lacks urgency or specificity about what happens next. A stronger CTA might emphasize the free consultation or create time-bound urgency.",
+          "confidence": "medium"
+        },
+        {
+          "dimension": "brand_voice",
+          "score": 8,
+          "rationale": "The voice is warm, relatable, and knowledgeable—it sounds like a peer sharing genuine experience rather than corporate messaging. The emphasis on personalized diagnosis and smart strategy aligns well with Varsity Tutors' positioning as expert-driven and student-focused.",
+          "confidence": "high"
+        },
+        {
+          "dimension": "emotional_resonance",
+          "score": 9,
+          "rationale": "The ad authentically captures the anxiety and stress of SAT prep ('losing sleep,' 'parents were stressed') and resolves it with a relatable breakthrough moment. The reader feels understood and hopeful, not just sold to.",
+          "confidence": "high"
+        }
+      ],
+      "aggregateScore": 8,
+      "passesThreshold": true,
+      "weakestDimension": {
+        "dimension": "call_to_action",
+        "score": 6,
+        "rationale": "The CTA is clear and low-friction ('Learn More' + free personalized study plan), but it's somewhat generic and lacks urgency or specificity about what happens next. A stronger CTA might emphasize the free consultation or create time-bound urgency.",
+        "confidence": "medium"
+      },
+      "evaluatedAt": "2026-03-11T03:09:03.727Z",
+      "inputTokens": 1049,
+      "outputTokens": 472
+    },
+    "combinedScore": 8.4,
+    "selectedAt": "2026-03-11T03:09:30.255Z"
+  },
+  {
+    "ad": {
+      "id": "d05d9508-b071-4ee8-970d-3d1b5d892643",
+      "briefId": "brief-students_stressed-conversion-stat-run3",
+      "primaryText": "Students who work with a tutor 1-on-1 average a 200-point score jump. That's the difference between a 1100 and a 1300 — the difference between stressed and confident. We'll match you with an expert who knows exactly where you're losing points, then build every session around fixing it. Your first week is free.",
+      "headline": "200-Point Average Score Jump",
+      "description": "Free 1-week trial. No credit card. Cancel anytime.",
+      "ctaButton": "Get Started",
+      "generatedAt": "2026-03-11T03:13:40.801Z",
+      "modelUsed": "claude-haiku-4-5-20251001",
+      "iterationCycle": 1,
+      "inputTokens": 1192,
+      "outputTokens": 140
+    },
+    "evaluation": {
+      "adId": "d05d9508-b071-4ee8-970d-3d1b5d892643",
+      "scores": [
+        {
+          "dimension": "clarity",
+          "score": 9,
+          "rationale": "The message is immediately clear: 1-on-1 tutoring leads to a 200-point improvement, and the first week is free. The structure flows logically from benefit → proof → mechanism → offer, with no competing messages or confusion.",
+          "confidence": "high"
+        },
+        {
+          "dimension": "value_proposition",
+          "score": 9,
+          "rationale": "The 200-point improvement is highly specific and quantified, anchored to real score ranges (1100→1300) that resonate with SAT test-takers. The emotional translation ('stressed to confident') differentiates from generic 'better scores' claims and adds psychological value beyond the number.",
+          "confidence": "high"
+        },
+        {
+          "dimension": "call_to_action",
+          "score": 8,
+          "rationale": "The CTA is clear and action-oriented ('Get Started'), and the supporting copy removes friction barriers (free trial, no credit card, cancel anytime). The only minor gap is that 'Get Started' could be slightly more specific (e.g., 'Start Free Trial'), but the supporting text compensates.",
+          "confidence": "high"
+        },
+        {
+          "dimension": "brand_voice",
+          "score": 8,
+          "rationale": "The tone is knowledgeable and empowering ('expert who knows exactly where you're losing points'), with a conversational warmth that feels like a trusted advisor rather than corporate speak. The emotional language ('stressed and confident') shows understanding of student psychology, though it could be slightly more distinctive to Varsity Tutors specifically.",
+          "confidence": "medium"
+        },
+        {
+          "dimension": "emotional_resonance",
+          "score": 9,
+          "rationale": "The ad authentically connects to the core anxiety of SAT test-takers by naming the emotional stakes ('stressed vs. confident') and positioning the tutor as a solution to a specific pain point (losing points in certain areas). The 200-point jump feels aspirational yet achievable, creating genuine emotional pull.",
+          "confidence": "high"
+        }
+      ],
+      "aggregateScore": 8.6,
+      "passesThreshold": true,
+      "weakestDimension": {
+        "dimension": "call_to_action",
+        "score": 8,
+        "rationale": "The CTA is clear and action-oriented ('Get Started'), and the supporting copy removes friction barriers (free trial, no credit card, cancel anytime). The only minor gap is that 'Get Started' could be slightly more specific (e.g., 'Start Free Trial'), but the supporting text compensates.",
+        "confidence": "high"
+      },
+      "evaluatedAt": "2026-03-11T03:13:45.674Z",
+      "inputTokens": 1034,
+      "outputTokens": 532
+    },
+    "combinedScore": 8.4,
+    "selectedAt": "2026-03-11T03:14:07.796Z"
+  },
+  {
+    "ad": {
+      "id": "703684da-7b3e-4eb0-9edf-8e8bd4b20592",
+      "briefId": "brief-students_stressed-conversion-story-run1",
+      "primaryText": "I was stuck at a 1120 and thought I'd peaked. My parents were stressed, I was stressed, and every practice test felt like a waste. Then I took a free diagnostic with Varsity Tutors and my tutor showed me exactly where I was losing 80+ points—reading comprehension patterns I didn't even know I had. Six weeks later, I hit 1310. The difference wasn't working harder. It was working smarter.",
+      "headline": "From Stuck to 1310 in 6 Weeks",
+      "description": "Take a free diagnostic practice test. See exactly where you're losing points.",
+      "ctaButton": "Get Started",
+      "generatedAt": "2026-03-11T03:14:10.878Z",
+      "modelUsed": "claude-haiku-4-5-20251001",
+      "iterationCycle": 1,
+      "inputTokens": 1192,
+      "outputTokens": 168
+    },
+    "evaluation": {
+      "adId": "703684da-7b3e-4eb0-9edf-8e8bd4b20592",
+      "scores": [
+        {
+          "dimension": "clarity",
+          "score": 9,
+          "rationale": "The narrative arc is immediately clear: student was stuck → got help → improved dramatically. The single message (diagnostic reveals hidden patterns) cuts through on first read without requiring re-reading.",
+          "confidence": "high"
+        },
+        {
+          "dimension": "value_proposition",
+          "score": 9,
+          "rationale": "Highly specific proof point (1120→1310, 190-point gain) with concrete mechanism (identifying reading comprehension patterns). The 'working smarter not harder' differentiator addresses the real pain point of effort without results.",
+          "confidence": "high"
+        },
+        {
+          "dimension": "call_to_action",
+          "score": 8,
+          "rationale": "CTA is clear and low-friction (free diagnostic removes barrier to entry), matched to the narrative promise. 'Get Started' is direct, though it could be slightly more specific ('Get Your Free Diagnostic') for maximum urgency.",
+          "confidence": "high"
+        },
+        {
+          "dimension": "brand_voice",
+          "score": 8,
+          "rationale": "Authentic, student-first voice that sounds like genuine testimony rather than corporate speak. Empowering and knowledgeable ('working smarter') without being patronizing, though it could lean slightly more into Varsity Tutors' specific methodology.",
+          "confidence": "medium"
+        },
+        {
+          "dimension": "emotional_resonance",
+          "score": 9,
+          "rationale": "Deeply resonant with target audience—captures the specific anxiety of plateauing, family stress, and self-doubt. The relief moment ('my tutor showed me exactly where') and the reframe ('working smarter') authentically address what SAT students actually feel.",
+          "confidence": "high"
+        }
+      ],
+      "aggregateScore": 8.6,
+      "passesThreshold": true,
+      "weakestDimension": {
+        "dimension": "call_to_action",
+        "score": 8,
+        "rationale": "CTA is clear and low-friction (free diagnostic removes barrier to entry), matched to the narrative promise. 'Get Started' is direct, though it could be slightly more specific ('Get Your Free Diagnostic') for maximum urgency.",
+        "confidence": "high"
+      },
+      "evaluatedAt": "2026-03-11T03:14:15.455Z",
+      "inputTokens": 1062,
+      "outputTokens": 461
+    },
+    "combinedScore": 8.4,
+    "selectedAt": "2026-03-11T03:14:42.234Z"
+  },
+  {
+    "ad": {
+      "id": "df99a9e7-2076-44e6-9109-0900a5b0fee6",
+      "briefId": "brief-comparison_shoppers-conversion-story-run1",
+      "primaryText": "I tried Khan Academy for two months and my score barely moved. Then I switched to Varsity Tutors for 1-on-1 tutoring and went from a 1190 to a 1380 in 8 weeks. My tutor identified that I was rushing through reading comprehension and we drilled that every session. The difference between generic prep and personalized help is huge.",
+      "headline": "From 1190 to 1380 in 8 Weeks",
+      "description": "Take a free diagnostic test. See exactly where you're losing points.",
+      "ctaButton": "Sign Up",
+      "generatedAt": "2026-03-11T03:27:48.310Z",
+      "modelUsed": "claude-haiku-4-5-20251001",
+      "iterationCycle": 1,
+      "inputTokens": 1199,
+      "outputTokens": 157
+    },
+    "evaluation": {
+      "adId": "df99a9e7-2076-44e6-9109-0900a5b0fee6",
+      "scores": [
+        {
+          "dimension": "clarity",
+          "score": 9,
+          "rationale": "The message is immediately clear: personalized 1-on-1 tutoring at Varsity Tutors delivers measurable score improvements where generic prep fails. The narrative arc (problem → solution → result) is easy to follow on first read.",
+          "confidence": "high"
+        },
+        {
+          "dimension": "value_proposition",
+          "score": 9,
+          "rationale": "The ad delivers a highly specific, differentiated benefit: 190-point improvement in 8 weeks through personalized tutoring that identifies and targets weak areas. This is concrete proof, not vague claims, and directly contrasts with a named competitor (Khan Academy).",
+          "confidence": "high"
+        },
+        {
+          "dimension": "call_to_action",
+          "score": 7,
+          "rationale": "The CTA is clear and low-friction (free diagnostic test), and the description creates urgency by promising immediate insight into problem areas. However, 'Sign Up' is generic and doesn't explicitly reinforce the free/no-risk nature of the first step.",
+          "confidence": "high"
+        },
+        {
+          "dimension": "brand_voice",
+          "score": 8,
+          "rationale": "The voice is warm, knowledgeable, and empowering—a trusted peer sharing real experience rather than corporate speak. The focus on personalized diagnosis and targeted drilling reflects Varsity Tutors' positioning as expert-driven, though it could be slightly more distinctive.",
+          "confidence": "medium"
+        },
+        {
+          "dimension": "emotional_resonance",
+          "score": 9,
+          "rationale": "The ad taps into genuine student anxiety (generic prep not working, time pressure) and the relief of finding a solution that actually works. The specific detail about rushing through reading comprehension makes the story feel authentic and relatable to test-takers.",
+          "confidence": "high"
+        }
+      ],
+      "aggregateScore": 8.4,
+      "passesThreshold": true,
+      "weakestDimension": {
+        "dimension": "call_to_action",
+        "score": 7,
+        "rationale": "The CTA is clear and low-friction (free diagnostic test), and the description creates urgency by promising immediate insight into problem areas. However, 'Sign Up' is generic and doesn't explicitly reinforce the free/no-risk nature of the first step.",
+        "confidence": "high"
+      },
+      "evaluatedAt": "2026-03-11T03:27:52.772Z",
+      "inputTokens": 1051,
+      "outputTokens": 487
+    },
+    "combinedScore": 8.4,
+    "selectedAt": "2026-03-11T03:28:17.786Z"
+  },
+  {
+    "ad": {
+      "id": "cb668b3a-63af-4585-bf2e-a6e3a594a196",
+      "briefId": "brief-comparison_shoppers-conversion-story-run3",
+      "primaryText": "I tried Khan Academy for two months and my score barely moved. Then I switched to Varsity Tutors and got paired with a tutor who immediately saw I was guessing on reading comprehension. In 5 weeks, I went from a 1120 to a 1310. The difference? Someone actually knew how to teach me, not just assign practice tests.",
+      "headline": "From 1120 to 1310 in 5 Weeks",
+      "description": "Get matched with an expert SAT tutor. Your first week is free — no credit card required.",
+      "ctaButton": "Get Started",
+      "generatedAt": "2026-03-11T03:28:52.347Z",
+      "modelUsed": "claude-haiku-4-5-20251001",
+      "iterationCycle": 1,
+      "inputTokens": 1201,
+      "outputTokens": 158
+    },
+    "evaluation": {
+      "adId": "cb668b3a-63af-4585-bf2e-a6e3a594a196",
+      "scores": [
+        {
+          "dimension": "clarity",
+          "score": 9,
+          "rationale": "The message is immediately clear: Varsity Tutors delivers faster results than competitors through personalized tutoring. The narrative arc (problem → solution → outcome) is easy to follow on first read, with no competing messages or structural confusion.",
+          "confidence": "high"
+        },
+        {
+          "dimension": "value_proposition",
+          "score": 9,
+          "rationale": "The ad delivers a highly specific, quantified benefit (190-point improvement in 5 weeks) with direct competitive proof (Khan Academy comparison). The differentiation is clear and credible: expert human instruction vs. self-directed practice, addressing a real pain point (guessing on reading comp).",
+          "confidence": "high"
+        },
+        {
+          "dimension": "call_to_action",
+          "score": 8,
+          "rationale": "The CTA is clear and low-friction with a strong incentive (free first week, no credit card). 'Get Started' is direct and action-oriented. Minor deduction: could be slightly more specific (e.g., 'Get Your Free Week' would reinforce the offer), but the description adequately supports the button.",
+          "confidence": "high"
+        },
+        {
+          "dimension": "brand_voice",
+          "score": 8,
+          "rationale": "The voice is warm, knowledgeable, and empowering—positioning Varsity Tutors as the expert friend who understands the student's struggle. The conversational tone ('someone actually knew how to teach me') feels authentic and approachable. Slightly less distinctive than iconic Varsity Tutors campaigns, but solidly on-brand.",
+          "confidence": "medium"
+        },
+        {
+          "dimension": "emotional_resonance",
+          "score": 9,
+          "rationale": "The ad deeply resonates with SAT test-taker anxiety: frustration with self-directed prep, the fear of wasted effort, and the relief of finding someone who 'gets it.' The specific diagnosis (guessing on reading comp) validates the reader's likely experience, creating strong emotional connection and trust.",
+          "confidence": "high"
+        }
+      ],
+      "aggregateScore": 8.6,
+      "passesThreshold": true,
+      "weakestDimension": {
+        "dimension": "call_to_action",
+        "score": 8,
+        "rationale": "The CTA is clear and low-friction with a strong incentive (free first week, no credit card). 'Get Started' is direct and action-oriented. Minor deduction: could be slightly more specific (e.g., 'Get Your Free Week' would reinforce the offer), but the description adequately supports the button.",
+        "confidence": "high"
+      },
+      "evaluatedAt": "2026-03-11T03:29:00.352Z",
+      "inputTokens": 1052,
+      "outputTokens": 538
+    },
+    "combinedScore": 8.4,
+    "selectedAt": "2026-03-11T03:29:24.271Z"
+  },
+  {
+    "ad": {
+      "id": "eef45eda-5c82-4552-8fef-15cac5547a6f",
+      "briefId": "brief-parents_anxious-awareness-story-run4",
+      "primaryText": "My son was stuck at a 1120 and I was terrified his SAT score would tank his college options. After 8 weeks with a Varsity Tutors instructor who actually understood his learning style, he hit 1310. Watching him go from stressed to confident was worth every penny. If you're worried like I was, get a free score analysis—it shows exactly where your child stands and what's possible.",
+      "headline": "From Stuck to College-Ready in 8 Weeks",
+      "description": "Free SAT score analysis reveals your student's biggest opportunities.",
+      "ctaButton": "Learn More",
+      "generatedAt": "2026-03-11T02:54:50.035Z",
+      "modelUsed": "claude-haiku-4-5-20251001",
+      "iterationCycle": 1,
+      "inputTokens": 1184,
+      "outputTokens": 158
+    },
+    "evaluation": {
+      "adId": "eef45eda-5c82-4552-8fef-15cac5547a6f",
+      "scores": [
+        {
+          "dimension": "clarity",
+          "score": 9,
+          "rationale": "The message is immediately clear: a parent's child improved significantly with Varsity Tutors, and the reader can get a free analysis. The narrative structure (problem → solution → outcome → next step) requires zero re-reading and lands in under 3 seconds.",
+          "confidence": "high"
+        },
+        {
+          "dimension": "value_proposition",
+          "score": 9,
+          "rationale": "The ad delivers a highly specific, quantified benefit (1120 → 1310, a 190-point improvement) with a concrete timeframe (8 weeks) and emotional outcome (stress to confidence). This is differentiated and proof-driven, not generic.",
+          "confidence": "high"
+        },
+        {
+          "dimension": "call_to_action",
+          "score": 7,
+          "rationale": "The CTA is clear and low-friction (free score analysis), with strong contextual setup explaining why the reader should act. However, 'Learn More' is slightly generic and could be more specific (e.g., 'Get Your Free Analysis') to maximize urgency and clarity.",
+          "confidence": "medium"
+        },
+        {
+          "dimension": "brand_voice",
+          "score": 8,
+          "rationale": "The voice is warm, empowering, and knowledgeable—a trusted advisor speaking to worried parents. It avoids corporate jargon and feels authentic. The phrase 'instructor who actually understood his learning style' signals Varsity Tutors' personalization philosophy, though the voice could be slightly more distinctive to the brand.",
+          "confidence": "medium"
+        },
+        {
+          "dimension": "emotional_resonance",
+          "score": 9,
+          "rationale": "The ad deeply resonates by naming the core anxiety ('terrified his SAT score would tank his college options') and showing the emotional transformation ('stressed to confident'). A parent reading this feels genuinely understood, not just sold to.",
+          "confidence": "high"
+        }
+      ],
+      "aggregateScore": 8.4,
+      "passesThreshold": true,
+      "weakestDimension": {
+        "dimension": "call_to_action",
+        "score": 7,
+        "rationale": "The CTA is clear and low-friction (free score analysis), with strong contextual setup explaining why the reader should act. However, 'Learn More' is slightly generic and could be more specific (e.g., 'Get Your Free Analysis') to maximize urgency and clarity.",
+        "confidence": "medium"
+      },
+      "evaluatedAt": "2026-03-11T02:54:54.791Z",
+      "inputTokens": 1052,
+      "outputTokens": 506
+    },
+    "combinedScore": 8.2,
+    "selectedAt": "2026-03-11T02:55:21.010Z"
+  },
+  {
+    "ad": {
+      "id": "21ebf461-ecc3-49e1-8e9f-42749de828ca",
+      "briefId": "brief-parents_anxious-conversion-story-run3",
+      "primaryText": "My daughter went from a 1090 to a 1340 in 8 weeks. We tried the big online courses first—she was drowning in generic lessons that didn't address her weak spots. Her Varsity Tutors tutor built every session around her specific struggles with reading comprehension. Watching her confidence grow was incredible. We're starting her free trial this week.",
+      "headline": "250-Point Jump in 8 Weeks",
+      "description": "Personalized 1-on-1 tutoring. First week free, no commitment.",
+      "ctaButton": "Sign Up",
+      "generatedAt": "2026-03-11T03:02:03.645Z",
+      "modelUsed": "claude-haiku-4-5-20251001",
+      "iterationCycle": 1,
+      "inputTokens": 1191,
+      "outputTokens": 154
+    },
+    "evaluation": {
+      "adId": "21ebf461-ecc3-49e1-8e9f-42749de828ca",
+      "scores": [
+        {
+          "dimension": "clarity",
+          "score": 9,
+          "rationale": "The message is immediately clear: personalized tutoring delivers dramatic results (250-point jump). The narrative structure flows logically from problem (generic courses) to solution (personalized tutoring) to outcome (confidence + results), with no competing messages or confusion.",
+          "confidence": "high"
+        },
+        {
+          "dimension": "value_proposition",
+          "score": 9,
+          "rationale": "The value is exceptionally specific: 250-point improvement in 8 weeks, with a clear differentiation (personalized 1-on-1 vs. generic online courses) and proof point (real parent testimonial). The free trial removes friction and demonstrates confidence in the product.",
+          "confidence": "high"
+        },
+        {
+          "dimension": "call_to_action",
+          "score": 7,
+          "rationale": "The CTA is clear and low-friction ('Sign Up'), and the description reinforces urgency and removes barriers ('First week free, no commitment'). However, 'Sign Up' is somewhat generic—a more specific CTA like 'Start Free Trial' would be marginally stronger and better aligned with the offer.",
+          "confidence": "high"
+        },
+        {
+          "dimension": "brand_voice",
+          "score": 8,
+          "rationale": "The voice is warm, empathetic, and knowledgeable—a parent sharing authentic experience rather than corporate messaging. It demonstrates understanding of student pain points and celebrates emotional wins ('watching her confidence grow'), which aligns well with Varsity Tutors' positioning as a human-centered tutoring brand.",
+          "confidence": "high"
+        },
+        {
+          "dimension": "emotional_resonance",
+          "score": 9,
+          "rationale": "The ad deeply resonates with parent anxiety about SAT prep and student struggle. It validates the frustration with impersonal online courses, celebrates the emotional payoff (confidence growth), and uses a relatable parent voice that builds trust and aspiration without feeling manipulative.",
+          "confidence": "high"
+        }
+      ],
+      "aggregateScore": 8.4,
+      "passesThreshold": true,
+      "weakestDimension": {
+        "dimension": "call_to_action",
+        "score": 7,
+        "rationale": "The CTA is clear and low-friction ('Sign Up'), and the description reinforces urgency and removes barriers ('First week free, no commitment'). However, 'Sign Up' is somewhat generic—a more specific CTA like 'Start Free Trial' would be marginally stronger and better aligned with the offer.",
+        "confidence": "high"
+      },
+      "evaluatedAt": "2026-03-11T03:02:08.578Z",
+      "inputTokens": 1048,
+      "outputTokens": 515
+    },
+    "combinedScore": 8.2,
+    "selectedAt": "2026-03-11T03:02:33.769Z"
+  }
+]

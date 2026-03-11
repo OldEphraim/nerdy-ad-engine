@@ -75,3 +75,32 @@ address this — it demonstrates that the iteration machinery works even though 
 threshold doesn't require it.
 
 ---
+
+## V3 Limitations
+
+**Competitive research agent returns training-knowledge values rather than live market data.**
+The Vercel AI SDK + Zod schema architecture is correct and ready for live search integration,
+but Claude Sonnet's training knowledge produces generic competitive insights rather than
+current campaign intelligence. The researcher's output is structurally valid and injected into
+the writer prompt, but it reflects what Sonnet learned during training, not what Princeton
+Review or Khan Academy is running on Meta today. A targeted search query or a dedicated
+scraping step would be needed to make competitive intelligence genuinely live.
+
+**Coherence loop improves 1/3 triggered cases (33%).** The single-retry constraint is
+intentional (Decision 26) but means some misalignments are logged without resolution. A
+multi-retry approach with prompt variation could improve this rate at the cost of additional
+image generation spend.
+
+**CTA dimension scores lowest at 6.6 avg.** The current writer prompt does not give CTA
+generation enough specific guidance. A v4 prompt engineering pass targeting CTA specificity
+for conversion-goal ads is the highest-leverage text quality improvement available.
+Awareness-goal ads are structurally constrained by the spec (must use "Learn More"), but
+conversion-goal CTAs have room to improve.
+
+**Copy refinement does not re-run image generation (Decision 32).** For the 1 case where
+copy refinement improved the copy, the image now reflects the old copy's messaging. The
+combined score improved because text quality increased, but text-image coherence was not
+re-evaluated against the refined copy. A full coherence re-check after copy refinement would
+catch this but adds cost and complexity.
+
+---

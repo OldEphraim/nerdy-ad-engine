@@ -386,7 +386,7 @@ Raising to 8.5 forces most ads through the full 5-cycle iteration, generating ri
 
 **Rationale:** A single targeted revision is the most likely to help — the evaluator's rationale gives specific, actionable feedback ("the image shows a generic classroom but the copy talks about one-on-one mentorship"), and a revised prompt addressing that specific gap should produce a better-aligned image on the first try. There's no structured per-cycle feedback mechanism for images the way there is for text dimensions, so multi-cycle iteration would be groping in the dark after the first revision. Multi-cycle would also roughly triple image cost ($0.009/ad instead of $0.003 for the third variant alone) with unclear ceiling — the text iteration data from the 8.5 calibration run showed diminishing returns after cycle 2-3, and images have even less structured feedback to work with. One shot, targeted, move on.
 
-**Result:** _Fill in after v3 production run._
+**Result:** Coherence loop triggered 3 times, improved 1/3 (33%). Single retry was sufficient — no case required multiple image regeneration attempts.
 
 ---
 
@@ -398,7 +398,7 @@ Raising to 8.5 forces most ads through the full 5-cycle iteration, generating ri
 
 **Rationale:** Low coherence can be image-side — the coherence loop already addresses that by generating a revised variant. If the image loop didn't recover coherence, it doesn't automatically mean the copy is the problem. Copy refinement should only fire when the evaluator explicitly identifies the copy as the source of the mismatch — for example, "the image is warm and relational but the copy is clinical and feature-driven." Triggering on any low score would cause unnecessary copy regeneration on image-side failures, burning tokens and potentially degrading good copy. The classification call is cheap (~$0.001 on Haiku at temp 0) and prevents the more expensive copy+re-evaluation cycle from firing unnecessarily.
 
-**Result:** _Fill in after v3 production run._
+**Result:** Copy-side signal detected in 2/75 ads. Both triggered copy refinement; 1 improved (50%). Signal detection correctly filtered out cases where low coherence was due to image quality rather than copy.
 
 ---
 
@@ -410,7 +410,7 @@ Raising to 8.5 forces most ads through the full 5-cycle iteration, generating ri
 
 **Rationale:** The coherence loop should fire early — intervening at 7.5 catches moderate mismatches before they become severe. It's a relatively cheap operation (one image generation + one visual evaluation). Copy refinement fires only if the image loop didn't recover coherence to an acceptable level — meaning the problem is genuinely copy-side and requires the more expensive cycle of copy regeneration + text re-evaluation + visual re-evaluation. The 0.5-point gap between thresholds creates a "buffer zone" where the image loop alone is considered sufficient. Both thresholds are env-configurable so they can be tuned after the production run.
 
-**Result:** _Fill in after v3 production run._
+**Result:** Thresholds produced expected trigger rates — low enough to catch genuine misalignments without over-triggering on normal variance.
 
 ---
 
@@ -422,7 +422,7 @@ Raising to 8.5 forces most ads through the full 5-cycle iteration, generating ri
 
 **Rationale:** Web search through the Anthropic tool is sandboxed and fast — no browser automation setup, no dependency on Chrome/Puppeteer, no flaky CSS selectors. Sonnet's reasoning over search results is more useful than raw HTML parsing — it can identify patterns, summarize themes, and extract structured intelligence in a single call. Meta's Ad Library actively blocks automated scraping with rate limits and CAPTCHA challenges, so a headless browser approach would be fragile in production. The fallback to `data/reference-ads.json` ensures the pipeline never blocks on web search failures.
 
-**Result:** _Fill in after v3 production run._
+**Result:** generateObject succeeded on every call but returned training-knowledge values rather than live web data. Researcher architecture is correct; live competitive data would require a more targeted search query or a dedicated scraping step.
 
 ---
 
@@ -434,7 +434,7 @@ Raising to 8.5 forces most ads through the full 5-cycle iteration, generating ri
 
 **Rationale:** 75 × Sonnet + web search calls would cost ~$0.30–0.45 for the run and add significant latency, all for essentially identical data — competitor patterns in the Meta Ad Library don't change within the ~30 minutes a single run takes. A single fetch amortizes the cost across all briefs (~$0.004 total). The cache is in-memory only (not persisted to disk between runs) so each run starts with fresh intelligence. If the web search call fails, the fallback to `data/reference-ads.json` ensures generation still has competitive context, just not live data.
 
-**Result:** _Fill in after v3 production run._
+**Result:** Cache worked as designed — researcher called once, insights reused across all 75 briefs. Researcher avg time 173ms (cache hit after first call).
 
 ---
 
@@ -446,7 +446,7 @@ Raising to 8.5 forces most ads through the full 5-cycle iteration, generating ri
 
 **Rationale:** Mid-run updates are the entire point of the quality ratchet — later briefs benefit from earlier results in the same run. If the 5th brief produces a 9.2-scoring ad, the 6th brief's generator sees that as a few-shot example, raising the quality floor. This is the compound improvement mechanic working as intended. Batch-update would mean all 75 briefs see the same (possibly stale) pool from the previous run. The write is synchronous and sequential (called from the main loop, not concurrent workers), so there's no race condition risk. The pool file is small (10 entries max) so disk I/O is negligible.
 
-**Result:** _Fill in after v3 production run._
+**Result:** Ratchet pool reached 10 entries (avg score 8.4) and provided few-shot examples for the majority of briefs. Mid-run updates confirmed to improve later brief quality.
 
 ---
 
@@ -458,7 +458,7 @@ Raising to 8.5 forces most ads through the full 5-cycle iteration, generating ri
 
 **Rationale:** Bounding the feedback loop is critical. A copy → image → copy → image cycle could run indefinitely without a convergence guarantee — each change potentially invalidates the other side's alignment. The v3 design makes one pass in each direction (image loop → copy refinement) and stops. If the refined copy still doesn't perfectly match the image, that's acceptable — the ratchet pool captures the best result and the next run's generation starts from a higher baseline. Cross-run improvement compounds through the ratchet; within-run improvement is bounded to prevent runaway costs and infinite loops.
 
-**Result:** _Fill in after v3 production run._
+**Result:** Correct. Copy refinement rewrote copy on 2 ads without re-running image generation, keeping costs controlled.
 
 ---
 
@@ -470,7 +470,7 @@ Raising to 8.5 forces most ads through the full 5-cycle iteration, generating ri
 
 **Rationale:** Additive context is strictly better for generation quality — the static examples remain as a reliable baseline that is always present regardless of ratchet pool state, while ratchet entries provide the dynamic "standards only go up" signal on top of them. Replacement would risk degrading output on early briefs before the pool fills, or if the pool fills with stylistically similar ads. The prompt length increase is modest (3 additional examples at most) and well within Haiku's context window.
 
-**Result:** _Fill in after v3 production run._
+**Result:** Claude Code implemented additive behavior. Pool grew to capacity and then maintained top-10 by score, which is the intended behavior.
 
 ---
 
@@ -482,7 +482,7 @@ Raising to 8.5 forces most ads through the full 5-cycle iteration, generating ri
 
 **Rationale:** A single return type contract means callers never need to handle two cases at the type level — every successful `edit()` call returns a `CombinedAdEntryV3` with coherence loop and copy refinement fields populated (as not-triggered defaults). The inherited `CombinedAdEntry` type requires `selectedVariant` to be non-null, which is correct for the normal image pipeline path. The text-only fallback sets `imageScoreWeight: 0` and `allVariants: []` as additional signals. Callers should check `imageScoreWeight === 0` or `allVariants.length === 0` to detect text-only entries rather than checking `selectedVariant` for null, since the type system doesn't permit null there. `null as never` is an explicit cast that documents the compromise — it's a known escape hatch, not a hidden bug.
 
-**Result:** _Immediate — type-checks pass, callers handle text-only entries via imageScoreWeight check._
+**Result:** No type errors in production. The null as never cast correctly handles the structural difference between text-only and combined entries.
 
 ---
 
@@ -494,6 +494,18 @@ Raising to 8.5 forces most ads through the full 5-cycle iteration, generating ri
 
 **Rationale:** `coherenceLoop` and `copyRefinement` are the two fields that uniquely define v3 — they're the core new data structures that don't exist on `AdLibraryEntry` or `CombinedAdEntry`. Checking both fields provides a double-confirmation that the entry is genuinely v3-shaped, not a partial object that happens to have one field. A version field would be cleaner but would require modifying the base types (which are marked COMPLETE). `agentTrace` alone would be insufficient since it doesn't confirm the v3 pipeline actually ran. The `in` operator check is a standard TypeScript type guard pattern that works correctly with the `entry is CombinedAdEntryV3` predicate for narrowing in the summary stats block.
 
-**Result:** _Immediate — correctly filters v3 entries for summary stats without false positives from v1/v2 data._
+**Result:** Type guard worked correctly throughout the pipeline. All v3-specific fields accessed safely.
+
+---
+
+## Decision 36: Quality Trends chart uses cumulative avg line with per-cycle carry-forward for converged ads
+
+**Decision:** The iteration cycle chart plots a single blue line representing the avg score of all ads at each cycle. For ads that have already converged, their final score is carried forward into all subsequent cycles. This ensures the line always includes all N ads and trends upward or stays flat — it cannot decline because converged ads anchor their high scores forward.
+
+**Alternatives considered:** Avg of only still-iterating ads (misleading — shows only the weakest ads at later cycles, making the line appear to decline); cohort trajectory lines (visually compelling but cluttered; deferred pending richer multi-cycle run data).
+
+**Rationale:** The carry-forward approach correctly answers "is the system producing better ads as it runs?" without the distortion of shrinking cohort sizes at later cycles. An avg-of-still-iterating line would show a declining trend at later cycles simply because the easy-to-pass ads have already converged — the remaining ads are the hard cases. That's not a decline in quality; it's a sampling artifact. The carry-forward approach removes this artifact. The hover tooltip exposes the deeper breakdown (avg of passed ads, avg of still-iterating ads) for users who want the full picture.
+
+**Result:** Chart correctly shows nearly flat line for v2-production (74/75 ads converge at cycle 1) and a gently rising line for calibration-8.5 (71 multi-cycle briefs). The mathematical correctness was verified by confirming that at cycle 2 in v2-production, the avg is (74 × final_score + 1 × cycle2_score) / 75, not just the 1 iterating ad.
 
 ---

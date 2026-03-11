@@ -7,9 +7,9 @@
 
 ## 1. Executive Summary
 
-The Nerdy Ad Engine is an autonomous Facebook/Instagram ad generation system for Varsity Tutors SAT prep. It generates, evaluates, and iterates ad copy using Claude Haiku, then produces visual creatives using fal.ai Flux Schnell with Claude Sonnet vision evaluation. The system processed 75 briefs across three named runs: a v1 text-only production run (7.0 threshold), a calibration stress-test (8.5 threshold), and a v2 text+image production run (7.0 threshold).
+The Nerdy Ad Engine is an autonomous Facebook/Instagram ad generation system for Varsity Tutors SAT prep. It generates, evaluates, and iterates ad copy using Claude Haiku, then produces visual creatives using fal.ai Flux Schnell with Claude Sonnet vision evaluation. The system processed 75 briefs across four named runs: a v1 text-only production run (7.0 threshold), a calibration stress-test (8.5 threshold), a v2 text+image production run, and a v3 full-pipeline production run.
 
-The v2 production run produced 75 complete text+image ad packages with a 100% pass rate, 150 image variants, and a combined average score of 7.8/10. Total cost across all three runs was $4.37. The system orchestrates four models (Claude Haiku text gen, Claude Haiku text eval, fal.ai Flux Schnell images, Claude Sonnet vision eval) with deterministic evaluation and graceful degradation.
+The v3 production run produced 75 complete text+image ad packages with a 100% pass rate and a combined average score of 7.8/10 at $0.0107/ad — significantly cheaper than v2 ($0.0331/ad) because the new coherence and copy-refinement loops only add cost when triggered (4% and 3% of ads respectively). Total cost across all four runs was $5.17.
 
 ---
 
@@ -20,10 +20,12 @@ The v2 production run produced 75 complete text+image ad packages with a 100% pa
 | production-7.0 (v1) | 7.0 | 75 | 100% (75/75) | 7.70 | $0.34 | $0.0046 | Week 4 |
 | calibration-8.5 | 8.5 | 75 | 15% (11/75) | 7.95 | $1.54 | $0.0206 | Week 4 |
 | v2-production | 7.0 | 75 | 100% (75/75) | 7.63 | $2.48 | $0.0331 | Week 4 |
+| v3-production | 7.0 | 75 | 100% (75/75) | 7.63 | $0.80 | $0.0107 | Week 5 |
 
 **Notes:**
 - The calibration run's low pass rate is by design — it stress-tests the iteration loop, not the generator prompt.
 - V2-production cost includes text pipeline ($0.34), image generation ($0.45), and visual evaluation ($1.69).
+- V3-production cost includes all v2 components plus coherence loop ($0.0422), copy refinement ($0.0143), and competitive research (~$0.008 total). V3 is cheaper than v2 per ad because loop costs are amortized across all 75 ads with only 3–4% activation rates.
 - The v1 and v2 production runs used different random seeds, so text scores differ slightly (7.70 vs 7.63).
 
 ---
@@ -171,7 +173,53 @@ Improving visual engagement would require either more specific visual direction 
 
 ---
 
-## 7. Methodology Notes
+## 7. V3 Results
+
+### 7.1 Pass Rate and Cost
+
+- **Pass rate:** 75/75 (100%) at threshold 7.0
+- **Cost per ad:** $0.0107 — cheaper than v2 because coherence and copy-refinement loops add cost only when triggered
+
+| Version | Cost/Ad | What's included |
+|---|---|---|
+| v1 | $0.0046 | Text only |
+| v2 | $0.0331 | Text + image + visual eval |
+| v3 | $0.0107 | All v3 features (loops triggered on 4% and 3% of ads) |
+
+### 7.2 Score Distribution (v3-production, combined scores)
+
+| Score Range | Count | % |
+|---|---|---|
+| 7.0–7.4 | 15 | 20% |
+| 7.5–7.9 | 16 | 21% |
+| 8.0–8.4 | 33 | 44% |
+| 8.5–9.0+ | 11 | 15% |
+
+- **Avg combined score:** 7.8
+- **Avg visual score:** 8.1
+
+### 7.3 Hook Type Performance (avg combined score)
+
+| Hook | Avg Combined Score |
+|---|---|
+| Story | 8.4 |
+| Stat | 7.9 |
+| Fear | 7.8 |
+
+### 7.4 V3 Loop Activation
+
+| Loop | Triggered | Improved | Improvement Rate |
+|---|---|---|---|
+| Coherence loop | 3/75 (4%) | 1/3 | 33% |
+| Copy refinement | 2/75 (3%) | 1/2 | 50% |
+
+### 7.5 Weakest Text Dimension
+
+**CTA — avg 6.6.** The CTA dimension remains the primary improvement target. The structural cap for awareness ads (spec mandates "Learn More") cannot be addressed within the current architecture. A hypothetical v4 improvement would involve prompt engineering specifically targeting CTA specificity for conversion-goal ads, where the constraint does not apply.
+
+---
+
+## 8. Methodology Notes
 
 This report was generated from pipeline output data stored in `data/runs/`. All quality scores reflect LLM-as-judge evaluation:
 

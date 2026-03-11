@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { type ReactNode, useEffect, useState } from "react";
 import { useRun } from "./run-context";
 
 interface DimensionScore {
@@ -72,12 +72,10 @@ interface AdEntry {
   ad: Ad;
   evaluation: Evaluation;
   iterationHistory: IterationHistory;
-  // V2 fields
   isCombinedEntry?: boolean;
   selectedVariant?: AdVariant;
   allVariants?: AdVariant[];
   combinedScore?: number;
-  // V3 fields
   coherenceLoop?: CoherenceLoop;
   copyRefinement?: CopyRefinement;
   ratchetExamplesUsed?: number;
@@ -90,6 +88,8 @@ interface DimAverage {
 }
 
 type SortKey = "score" | "combined" | "briefId" | "cycles" | "cost";
+
+const PAGE_SIZE = 25;
 
 function formatBriefId(briefId: string): string {
   return briefId
@@ -156,6 +156,30 @@ const DIMENSION_LABELS: Record<string, string> = {
 
 const THRESHOLD = 7.0;
 
+function InfoTooltip({
+  text,
+  align = "center",
+  wide = false,
+}: {
+  text: ReactNode;
+  align?: "left" | "center" | "right";
+  wide?: boolean;
+}) {
+  const posClass =
+    align === "right" ? "right-0" :
+    align === "left"  ? "left-0"  :
+    "left-1/2 -translate-x-1/2";
+  const widthClass = wide ? "w-72" : "w-52";
+  return (
+    <span className="group relative inline-block align-middle ml-1">
+      <span className="text-gray-500 text-xs font-normal normal-case select-none">&#x24D8;</span>
+      <div className={`pointer-events-none absolute top-full mt-1 z-[9999] ${widthClass} rounded-md border border-zinc-200 bg-white p-2 text-xs font-normal normal-case text-zinc-600 shadow-lg leading-relaxed opacity-0 transition-opacity group-hover:opacity-100 ${posClass}`}>
+        {text}
+      </div>
+    </span>
+  );
+}
+
 export default function AdLibrary() {
   const { selectedRun } = useRun();
   const [entries, setEntries] = useState<AdEntry[]>([]);
@@ -163,6 +187,7 @@ export default function AdLibrary() {
   const [sortKey, setSortKey] = useState<SortKey>("score");
   const [sortAsc, setSortAsc] = useState(false);
   const [expandedId, setExpandedId] = useState<string | null>(null);
+  const [page, setPage] = useState(1);
   const [passingCount, setPassingCount] = useState(0);
   const [dimAverages, setDimAverages] = useState<DimAverage[]>([]);
   const [imageStats, setImageStats] = useState<{
@@ -174,6 +199,7 @@ export default function AdLibrary() {
 
   useEffect(() => {
     setLoading(true);
+    setPage(1);
     const url = selectedRun ? `/api/ads?run=${encodeURIComponent(selectedRun)}` : "/api/ads";
     fetch(url)
       .then((r) => r.json())
@@ -198,6 +224,7 @@ export default function AdLibrary() {
       setSortKey(key);
       setSortAsc(false);
     }
+    setPage(1);
   };
 
   const sorted = [...entries].sort((a, b) => {
@@ -222,12 +249,16 @@ export default function AdLibrary() {
     return sortAsc ? cmp : -cmp;
   });
 
+  const totalPages = Math.max(1, Math.ceil(sorted.length / PAGE_SIZE));
+  const safePage = Math.min(page, totalPages);
+  const pageStart = (safePage - 1) * PAGE_SIZE;
+  const paged = sorted.slice(pageStart, pageStart + PAGE_SIZE);
+
   if (loading) {
     return <p className="text-zinc-500 py-12 text-center">Loading ad library...</p>;
   }
 
   const passRate = entries.length > 0 ? Math.round((passingCount / entries.length) * 100) : 0;
-  const hasV3 = entries.some((e) => e.coherenceLoop != null);
 
   return (
     <div>
@@ -244,6 +275,18 @@ export default function AdLibrary() {
         <div className="mb-6 rounded-lg border border-zinc-200 bg-white p-4">
           <h2 className="text-xs font-semibold uppercase tracking-wider text-zinc-400 mb-3">
             Average Dimension Scores
+            <InfoTooltip wide text={
+              <span>
+                Text quality scores averaged across all ads in this run:
+                <ul className="mt-1.5 space-y-1">
+                  <li>• <strong>CTA:</strong> How clear, specific, and action-driving the call-to-action is</li>
+                  <li>• <strong>Brand Voice:</strong> How well the copy reflects Varsity Tutors&apos; tone — knowledgeable, empathetic, and trustworthy</li>
+                  <li>• <strong>Emotion:</strong> How effectively the copy connects with the audience&apos;s feelings and motivations</li>
+                  <li>• <strong>Clarity:</strong> How easy the message is to understand with no competing ideas</li>
+                  <li>• <strong>Value Prop:</strong> How compelling and specific the core benefit offered is</li>
+                </ul>
+              </span>
+            } />
           </h2>
           <div className="flex flex-wrap gap-3">
             {dimAverages.map((d, i) => (
@@ -270,11 +313,23 @@ export default function AdLibrary() {
         </div>
       )}
 
-      {/* V2: Image stats summary */}
+      {/* Image stats summary */}
       {imageStats && (
         <div className="mb-6 rounded-lg border border-zinc-200 bg-white p-4">
           <h2 className="text-xs font-semibold uppercase tracking-wider text-zinc-400 mb-3">
-            Visual Scores (v2)
+            Visual Scores
+            <InfoTooltip wide text={
+              <span>
+                Image quality scores averaged across all ads in this run:
+                <ul className="mt-1.5 space-y-1">
+                  <li>• <strong>Avg Visual:</strong> Average of the three visual dimension scores below</li>
+                  <li>• <strong>Avg Combined:</strong> Weighted blend of text score (60%) and visual score (40%) — the primary quality metric</li>
+                  <li>• <strong>Brand Consistency:</strong> How well the image reflects Varsity Tutors&apos; warm, authentic, approachable visual identity</li>
+                  <li>• <strong>Visual Engagement:</strong> How distinctive and scroll-stopping the image is</li>
+                  <li>• <strong>Text-Image Coherence:</strong> How well the image and ad copy reinforce each other</li>
+                </ul>
+              </span>
+            } />
           </h2>
           <div className="flex flex-wrap gap-3">
             <div className="flex items-center gap-2 rounded-lg border border-zinc-200 bg-zinc-50 px-3 py-2 text-sm">
@@ -306,31 +361,46 @@ export default function AdLibrary() {
             <tr className="border-b border-zinc-200 bg-zinc-50 text-left text-xs font-medium uppercase tracking-wider text-zinc-500">
               <th className="px-4 py-3 cursor-pointer hover:text-zinc-800" onClick={() => handleSort("briefId")}>
                 Brief {sortKey === "briefId" ? (sortAsc ? "↑" : "↓") : ""}
+                <InfoTooltip align="left" wide text={
+                  <span>
+                    Each brief is named by four attributes: Audience / Goal / Hook / Run number.
+                    <ul className="mt-1.5 space-y-1">
+                      <li>• <strong>Audience:</strong> Parents Anxious, Students Stressed, or Comparison Shoppers</li>
+                      <li>• <strong>Goal:</strong> Conversion (drive sign-ups) or Awareness (build brand recognition)</li>
+                      <li>• <strong>Hook:</strong> Story, Stat, Fear, or Question — the creative angle of the copy</li>
+                      <li>• <strong>Run:</strong> multiple runs per combination test variety within the same brief type</li>
+                    </ul>
+                  </span>
+                } />
               </th>
               <th className="px-4 py-3">Audience</th>
               <th className="px-4 py-3">Goal</th>
-              <th className="px-4 py-3">Hook</th>
+              <th className="px-4 py-3">
+                Hook
+                <InfoTooltip text="Hook type derived from brief ID: Question, Stat, Story, or Fear." />
+              </th>
               <th className="px-4 py-3 cursor-pointer hover:text-zinc-800" onClick={() => handleSort("score")}>
                 Text {sortKey === "score" ? (sortAsc ? "↑" : "↓") : ""}
+                <InfoTooltip text="Text evaluation aggregate score (0–10). Passes threshold at 7.0." />
               </th>
               {imageStats && (
                 <th className="px-4 py-3 cursor-pointer hover:text-zinc-800" onClick={() => handleSort("combined")}>
                   Combined {sortKey === "combined" ? (sortAsc ? "↑" : "↓") : ""}
+                  <InfoTooltip text="Combined score: text (60%) + visual (40%). V3 loop badges shown below when triggered." />
                 </th>
-              )}
-              {hasV3 && (
-                <th className="px-4 py-3">V3 Loops</th>
               )}
               <th className="px-4 py-3 cursor-pointer hover:text-zinc-800" onClick={() => handleSort("cycles")}>
                 Cycles {sortKey === "cycles" ? (sortAsc ? "↑" : "↓") : ""}
+                <InfoTooltip text="Number of text iteration cycles before the ad passed threshold." />
               </th>
               <th className="px-4 py-3 cursor-pointer hover:text-zinc-800" onClick={() => handleSort("cost")}>
                 Cost {sortKey === "cost" ? (sortAsc ? "↑" : "↓") : ""}
+                <InfoTooltip text="Estimated cost in USD for text generation and evaluation only (excludes image generation)." align="right" />
               </th>
             </tr>
           </thead>
           <tbody>
-            {sorted.map((entry) => {
+            {paged.map((entry) => {
               const isExpanded = expandedId === entry.ad.id;
               return (
                 <AdRow
@@ -339,12 +409,65 @@ export default function AdLibrary() {
                   isExpanded={isExpanded}
                   onToggle={() => setExpandedId(isExpanded ? null : entry.ad.id)}
                   hasImageColumn={!!imageStats}
-                  hasV3Column={hasV3}
                 />
               );
             })}
           </tbody>
         </table>
+      </div>
+
+      {/* Pagination */}
+      <Pagination
+        total={sorted.length}
+        page={safePage}
+        pageSize={PAGE_SIZE}
+        onPrev={() => setPage((p) => Math.max(1, p - 1))}
+        onNext={() => setPage((p) => Math.min(totalPages, p + 1))}
+      />
+    </div>
+  );
+}
+
+function Pagination({
+  total,
+  page,
+  pageSize,
+  onPrev,
+  onNext,
+}: {
+  total: number;
+  page: number;
+  pageSize: number;
+  onPrev: () => void;
+  onNext: () => void;
+}) {
+  const totalPages = Math.max(1, Math.ceil(total / pageSize));
+  const from = (page - 1) * pageSize + 1;
+  const to = Math.min(page * pageSize, total);
+
+  return (
+    <div className="mt-4 flex items-center justify-between text-sm text-zinc-500">
+      <span>
+        Showing {from}–{to} of {total} ads
+      </span>
+      <div className="flex items-center gap-2">
+        <button
+          onClick={onPrev}
+          disabled={page === 1}
+          className="rounded-md border border-zinc-200 bg-white px-3 py-1.5 text-xs font-medium text-zinc-700 hover:bg-zinc-50 disabled:cursor-not-allowed disabled:opacity-40"
+        >
+          ← Prev
+        </button>
+        <span className="text-xs text-zinc-400">
+          {page} / {totalPages}
+        </span>
+        <button
+          onClick={onNext}
+          disabled={page === totalPages}
+          className="rounded-md border border-zinc-200 bg-white px-3 py-1.5 text-xs font-medium text-zinc-700 hover:bg-zinc-50 disabled:cursor-not-allowed disabled:opacity-40"
+        >
+          Next →
+        </button>
       </div>
     </div>
   );
@@ -370,9 +493,12 @@ function V3Badges({ entry }: { entry: AdEntry }) {
   if (badges.length === 0) return null;
 
   return (
-    <div className="flex flex-wrap gap-1">
+    <div className="flex flex-wrap gap-1 mt-1">
       {badges.map((b) => (
-        <span key={b.label} className={`inline-block rounded-full px-2 py-0.5 text-xs font-medium ${b.className}`}>
+        <span
+          key={b.label}
+          className={`inline-block rounded-full px-1.5 py-0 text-[10px] font-medium leading-5 ${b.className}`}
+        >
           {b.label}
         </span>
       ))}
@@ -385,17 +511,15 @@ function AdRow({
   isExpanded,
   onToggle,
   hasImageColumn,
-  hasV3Column,
 }: {
   entry: AdEntry;
   isExpanded: boolean;
   onToggle: () => void;
   hasImageColumn: boolean;
-  hasV3Column: boolean;
 }) {
   const { ad, evaluation, iterationHistory } = entry;
   const score = evaluation.aggregateScore;
-  const colSpan = (hasImageColumn ? 8 : 7) + (hasV3Column ? 1 : 0);
+  const colSpan = hasImageColumn ? 8 : 7;
 
   return (
     <>
@@ -417,20 +541,20 @@ function AdRow({
         {hasImageColumn && (
           <td className="px-4 py-3">
             {entry.combinedScore != null ? (
-              <span className={`inline-block rounded-full px-2.5 py-0.5 text-xs font-semibold ${scoreBadge(entry.combinedScore)}`}>
-                {entry.combinedScore.toFixed(1)}
-              </span>
+              <div>
+                <span className={`inline-block rounded-full px-2.5 py-0.5 text-xs font-semibold ${scoreBadge(entry.combinedScore)}`}>
+                  {entry.combinedScore.toFixed(1)}
+                </span>
+                <V3Badges entry={entry} />
+              </div>
             ) : (
               <span className="text-xs text-zinc-400">—</span>
             )}
           </td>
         )}
-        {hasV3Column && (
-          <td className="px-4 py-3">
-            <V3Badges entry={entry} />
-          </td>
-        )}
-        <td className="px-4 py-3 text-zinc-600">{iterationHistory.cycles.length}</td>
+        <td className="px-4 py-3 text-zinc-600">
+          {iterationHistory.cycles.length}
+        </td>
         <td className="px-4 py-3 font-mono text-xs text-zinc-500">
           ${iterationHistory.estimatedCostUsd.toFixed(4)}
         </td>

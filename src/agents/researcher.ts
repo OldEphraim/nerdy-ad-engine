@@ -1,8 +1,10 @@
 // ── Researcher Agent: competitive intelligence + ratchet assembly ──────────
-// Fetches current competitor ad patterns via Anthropic web search tool,
+// Fetches current competitor ad patterns via Vercel AI SDK with structured output,
 // assembles ratchet pool examples, and returns an EnrichedBrief.
 
-import Anthropic from '@anthropic-ai/sdk';
+import { generateObject } from 'ai';
+import { anthropic } from '@ai-sdk/anthropic';
+import { z } from 'zod';
 import { readFileSync, existsSync } from 'fs';
 import { resolve } from 'path';
 import type {
@@ -12,23 +14,26 @@ import type {
   RatchetEntry,
 } from '../types.js';
 
-const client = new Anthropic({ maxRetries: 5 });
+const competitorInsightsSchema = z.object({
+  dominantHooks: z.array(z.string()).describe('Hook types performing well in competitor ads'),
+  ctaPatterns: z.array(z.string()).describe('Call-to-action patterns used by competitors'),
+  emotionalAngles: z.array(z.string()).describe('Emotional angles performing well'),
+  freshInsights: z.array(z.string()).describe('New creative formats or trends in the last 30 days'),
+});
 
 const RESEARCHER_SYSTEM_PROMPT = `You are a competitive intelligence analyst for Varsity Tutors' paid social team.
 Your job is to identify patterns in competitor SAT prep ads currently running on Meta.
 
 Focus on: hook types performing well, CTA patterns, emotional angles, new creative
-formats appearing across multiple competitors.
-
-Return ONLY valid JSON: { "dominantHooks": string[], "ctaPatterns": string[],
-"emotionalAngles": string[], "freshInsights": string[] }`;
+formats appearing across multiple competitors.`;
 
 const RATCHET_PATH = resolve(process.cwd(), 'data/ratchet/top-ads.json');
 const REFERENCE_ADS_PATH = resolve(process.cwd(), 'data/reference-ads.json');
 
 /**
- * Fetch competitive intelligence from the Meta Ad Library via Anthropic web search.
- * Returns cached insights if provided; falls back to reference-ads.json on failure.
+ * Fetch competitive intelligence from the Meta Ad Library via Vercel AI SDK
+ * with structured JSON output. Returns cached insights if provided;
+ * falls back to reference-ads.json on failure.
  */
 async function fetchCompetitorInsights(
   cache: CompetitorInsights | null,
@@ -36,42 +41,25 @@ async function fetchCompetitorInsights(
   if (cache) return cache;
 
   try {
-    const model = process.env['RESEARCHER_MODEL'] ?? 'claude-sonnet-4-5';
-    const response = await client.messages.create({
-      model,
-      max_tokens: 1024,
+    const modelId = process.env['RESEARCHER_MODEL'] ?? 'claude-sonnet-4-5';
+
+    const { object } = await generateObject({
+      model: anthropic(modelId),
+      schema: competitorInsightsSchema,
       temperature: 0,
-      tools: [{ type: 'web_search_20250305' as const, name: 'web_search', max_uses: 5 }],
       system: RESEARCHER_SYSTEM_PROMPT,
-      messages: [{
-        role: 'user',
-        content: `Search the Meta Ad Library for current active ads from Princeton Review, \
+      prompt: `Search the Meta Ad Library for current active ads from Princeton Review, \
 Kaplan, Khan Academy, and Chegg targeting SAT prep audiences. \
 Identify: dominant hook types, CTA patterns, emotional angles, and any \
-new creative formats active in the last 30 days. \
-Return ONLY valid JSON — no preamble, no markdown fences. \
-Schema: { "dominantHooks": string[], "ctaPatterns": string[], \
-"emotionalAngles": string[], "freshInsights": string[] }`,
-      }],
+new creative formats active in the last 30 days.`,
     });
 
-    // Extract text from response content blocks
-    const textBlock = response.content.find((b) => b.type === 'text');
-    if (!textBlock || textBlock.type !== 'text') {
-      throw new Error('No text block in researcher response');
-    }
-
-    // Strip markdown fences if present
-    let jsonText = textBlock.text.trim();
-    if (jsonText.startsWith('```')) {
-      jsonText = jsonText.replace(/^```(?:json)?\n?/, '').replace(/\n?```$/, '');
-    }
-
-    const parsed = JSON.parse(jsonText) as CompetitorInsights;
-    parsed.fetchedAt = new Date().toISOString();
-    return parsed;
+    return {
+      ...object,
+      fetchedAt: new Date().toISOString(),
+    };
   } catch (err) {
-    console.warn(`[researcher] Web search failed, falling back to reference-ads.json: ${err}`);
+    console.warn(`[researcher] Structured generation failed, falling back to reference-ads.json: ${err}`);
     return loadFallbackInsights();
   }
 }

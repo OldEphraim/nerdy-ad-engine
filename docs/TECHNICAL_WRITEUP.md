@@ -97,4 +97,69 @@ The v2 production run processed 75 briefs with 100% text pass rate and 100% imag
 
 **Visual evaluation is inherently subjective.** We don't have official Varsity Tutors brand guidelines for the image layer. The evaluator uses inferred brand values (empowering, warm, aspirational) that may not match actual brand standards. Scores should be treated as directional rather than absolute.
 
-**What v3 would add:** Human-in-the-loop validation of a sample of generated ads against actual brand guidelines. More specific image prompt engineering (camera angles, lighting directions, composition rules) to push visual engagement scores. A/B testing integration to validate whether LLM-evaluated quality correlates with actual Meta ad performance metrics (CTR, conversion rate). Competitive intelligence refresh with current Meta Ad Library data.
+**What v3 adds:** See V3 Architecture section below.
+
+## V3 Architecture
+
+V3 restructures the pipeline as four named agents and adds three new feedback loops.
+
+### Agent Structure
+
+```
+PIPELINE ORCHESTRATOR (src/index.ts)
+  │
+  ├── RESEARCHER AGENT (src/agents/researcher.ts)
+  │     Input: AdBrief + insights cache
+  │     Output: EnrichedBrief (brief + ratchet examples + competitor insights)
+  │     Uses: Vercel AI SDK generateObject + Zod schema → CompetitorInsights
+  │     Cache: one fetch per run, reused across all 75 briefs
+  │     Fallback: data/reference-ads.json on any API failure
+  │
+  ├── WRITER AGENT (src/agents/writer.ts)
+  │     Input: EnrichedBrief
+  │     Output: GeneratedAd
+  │     Injects: ratchet few-shot examples (appended after static examples)
+  │              + competitor context block into system prompt
+  │
+  └── EDITOR AGENT (src/agents/editor.ts)
+        Input: EnrichedBrief
+        Output: CombinedAdEntryV3
+        Runs:  text iteration loop (unchanged from v2)
+               → image pipeline (unchanged from v2)
+               → coherence loop (NEW)
+               → copy refinement loop (NEW)
+```
+
+### New Types (src/types.ts)
+
+- **`CompetitorInsights`** — `{ dominantHooks, ctaPatterns, emotionalAngles, freshInsights, fetchedAt }`
+- **`EnrichedBrief`** — extends `AdBrief` with `ratchetExamples: RatchetEntry[]` and `competitorInsights: CompetitorInsights`
+- **`RatchetEntry`** — `{ ad: GeneratedAd, evaluation: EvaluationResult, combinedScore: number, selectedAt: string }`
+- **`CoherenceLoopResult`** — `{ triggered, triggerScore, triggerRationale, revisedPrompt, variant3, variant3Score, improved, costUsd }`
+- **`CopyRefinementResult`** — `{ triggered, copySideSignal, originalCopy, refinedAd, refinedTextScore, refinedCombinedScore, improved, costUsd }`
+- **`CombinedAdEntryV3`** — extends `CombinedAdEntry` with `coherenceLoop`, `copyRefinement`, `ratchetExamplesUsed`, `competitorInsightsUsed`, `agentTrace`
+
+### Coherence Loop
+
+When `text_image_coherence` is the weakest visual dimension and scores below 7.5, the system generates a third image variant using a revised prompt derived from the evaluator's specific coherence rationale. If variant 3 scores higher than the A/B winner, it replaces the winner. One retry only (see Decision 26).
+
+### Copy Refinement Loop
+
+If coherence is still below 7.0 after the image loop, a Haiku classification call determines whether the mismatch is image-side or copy-side. If copy-side, the Writer regenerates copy using the image prompt as visual context. Text is re-evaluated; if it passes and the combined score improves, the new copy replaces the original. Copy refinement fires at most once per ad and does not trigger another image generation pass (see Decision 32).
+
+### Quality Ratchet
+
+After each brief completes, ads with combined score ≥ 8.0 enter `data/ratchet/top-ads.json` (max 10 entries, lowest score evicted when full). Later briefs in the same run use these as dynamic few-shot examples via the Writer agent — the pool updates mid-run so later briefs benefit from earlier results.
+
+### V3 Production Run Results
+
+- **75/75 briefs passing** (100%) at 7.0 threshold
+- **Total cost: $0.7981** ($0.0107/ad)
+  - Text pipeline: $0.3391 | Image generation: $0.4590
+  - Coherence loop: $0.0422 total (3 triggers) | Copy refinement: $0.0143 total (2 triggers)
+- **Coherence loop:** triggered 3/75 (4%), improved 1/3 (33%)
+- **Copy refinement:** triggered 2/75 (3%), improved 1/2 (50%)
+- **Ratchet pool:** reached capacity at 10 ads, avg score 8.4
+- **Avg visual score:** 8.1 | **Avg combined score:** 7.8
+- **Weakest visual dimension:** visual_engagement (7.3, unchanged from v2)
+- **Agent timing (avg per ad):** Researcher 173ms (cache hit after brief 1), Writer 20,794ms, Editor 60,247ms

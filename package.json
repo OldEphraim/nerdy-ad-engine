@@ -16,9 +16,11 @@
   "license": "ISC",
   "packageManager": "pnpm@10.31.0",
   "dependencies": {
+    "@ai-sdk/anthropic": "^3.0.58",
     "@anthropic-ai/sdk": "^0.78.0",
     "@fal-ai/client": "^1.9.4",
     "@google/generative-ai": "^0.24.1",
+    "ai": "^6.0.116",
     "csv-writer": "^1.6.0",
     "dotenv": "^17.3.1",
     "uuid": "^13.0.0",

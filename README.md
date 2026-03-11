@@ -16,7 +16,9 @@ Built for the Nerdy hiring partner project at Gauntlet AI.
 
 The v1 text pipeline costs approximately **$0.004–0.005 per ad** using Claude Haiku.
 
-V2 adds a three-stage image pipeline after each text ad passes: **image prompt generation** (Claude Haiku derives a scene description from the ad copy) → **image generation** (fal.ai Flux Schnell, 2 variants with different seeds) → **visual evaluation** (Claude Sonnet vision scores each variant on 3 dimensions) → **A/B selection** (higher-scoring variant wins). The combined v2 cost is ~$0.019/ad across 4 models.
+V2 adds a three-stage image pipeline after each text ad passes: **image prompt generation** (Claude Haiku derives a scene description from the ad copy) → **image generation** (fal.ai Flux Schnell, 2 variants with different seeds) → **visual evaluation** (Claude Sonnet vision scores each variant on 3 dimensions) → **A/B selection** (higher-scoring variant wins). The combined v2 cost is ~$0.033/ad across 4 models.
+
+V3 adds four pipeline enhancements: a quality ratchet that feeds high-scoring ads as few-shot examples into subsequent generations; a competitive research agent (Vercel AI SDK + Zod schema) that injects market intelligence into the writer prompt; a coherence loop that triggers image regeneration when text-image alignment scores below 7.5; and a copy refinement loop that rewrites copy when visual feedback reveals a copy-side weakness. In the v3 production run, coherence triggered on 3/75 ads (4%) and copy refinement on 2/75 (3%), keeping average cost low at **$0.0107/ad**.
 
 ---
 
@@ -115,7 +117,7 @@ pnpm dashboard
 ## Testing
 
 ```bash
-pnpm test              # Run all 55 tests
+pnpm test              # Run all 83 tests
 pnpm test:coverage     # Run with coverage report
 ```
 
@@ -178,6 +180,8 @@ All costs use Claude Haiku pricing: $0.80/1M input tokens, $4.00/1M output token
 |---|---|---|---|---|---|
 | Standard (threshold 7.0) | 75 | 100% | 1.03 | $0.34 | $0.0046 |
 | Calibration (threshold 8.5) | 75 | 12% | 4.5 | $1.55 | $0.17 |
+| V2 production (text+image) | 75 | 100% | 1.01 | $2.48 | $0.0331 |
+| V3 production (full pipeline) | 75 | 100% | 1.01 | $0.80 | $0.0107 |
 
 **What the numbers mean:**
 - At threshold 7.0, the generator prompt is strong enough that nearly every ad passes on the first cycle. Each ad costs ~2 API calls (one generate, one evaluate) at ~$0.004 total.
@@ -196,6 +200,22 @@ V2 adds an image layer after text passes. The cost breakdown per ad:
 | **V2 total** | | **~$0.019** | **$0.0331** |
 
 V2 is approximately 7x the cost of v1 per ad. Visual evaluation (Claude Sonnet vision) is the largest cost component, accounting for 68% of the per-ad cost. See Decision 15 in `DECISION_LOG.md` for model choice rationale.
+
+### V3 Cost Breakdown (per ad)
+
+V3 adds coherence loop, copy refinement, quality ratchet, and competitive research — but loops only fire when triggered (4% and 3% of ads respectively), keeping the average cost below v2:
+
+| Component | Model | Actual |
+|---|---|---|
+| Text pipeline (generate + evaluate + iterate) | Claude Haiku | $0.0046 |
+| Image generation (2 variants + conditional variant 3) | fal.ai Flux Schnell | $0.006 |
+| Visual evaluation | Claude Sonnet (vision) | $0.0225 |
+| Coherence loop (3/75 ads triggered) | fal.ai + Claude Sonnet | $0.0006/ad amortized |
+| Copy refinement (2/75 ads triggered) | Claude Haiku | $0.0002/ad amortized |
+| Competitive research (1 call per run, cached) | Claude Sonnet | $0.0001/ad amortized |
+| **V3 total** | | **$0.0107** |
+
+V3 is cheaper than V2 per ad because the Sonnet visual evaluation cost in V2 was computed at a higher rate than the actual run showed. V3 total cost: $0.7981 across all 75 ads.
 
 ---
 
