@@ -163,3 +163,40 @@ After each brief completes, ads with combined score ≥ 8.0 enter `data/ratchet/
 - **Avg visual score:** 8.1 | **Avg combined score:** 7.8
 - **Weakest visual dimension:** visual_engagement (7.3, unchanged from v2)
 - **Agent timing (avg per ad):** Researcher 173ms (cache hit after brief 1), Writer 20,794ms, Editor 60,247ms
+
+## Dashboard & Frontend Architecture
+
+The dashboard is a Next.js 14 app-router application using Tailwind CSS for styling and Recharts for all chart visualizations. It lives in `dashboard/` as a separate package with its own `node_modules`, decoupled from the pipeline's dependencies.
+
+### Pages
+
+**Ad Library (`/`)** is the primary view. It fetches `/api/ads`, renders a paginated sortable table (25 ads per page), and shows inline V3 badges on the combined score cell when the coherence loop or copy refinement loop fired. A column tooltip system (ⓘ icons) explains every metric without cluttering the table. Clicking a row opens an inline detail panel with per-dimension scores, evaluator rationale, iteration history, image thumbnail, and visual dimension breakdown.
+
+**Quality Trends (`/trends`)** renders four stat blocks above two Recharts charts: a line chart showing iteration cycle quality (cumulative average with carry-forward for converged ads) and a bar chart showing combined score distribution across the run. A hook-type leaderboard and V3 pipeline activity stats (coherence loop rate, copy refinement rate, improvement rates) round out the view.
+
+**Showcase (`/showcase`)** renders the top 12 ads from any run as faithful reproductions of the Meta ad card format — 1.91:1 image ratio, brand header with logo placeholder, primary text with "See more" expansion at 125 characters, domain/headline/description footer, CTA button, and colored combined score badge. Clicking the image or CTA opens the `AdDetailModal`.
+
+**Coherence (`/coherence`)** lists all ads sorted by `text_image_coherence` score ascending, surfacing the weakest-coherence ads first with loop activation and improvement status badges.
+
+### Run Selector
+
+A `RunContext` provider wraps the app. The header run selector reads `data/runs/*.json` via the `/api/runs` endpoint and allows switching between saved runs (`v2-production`, `v3-production`, `calibration-8.5`, etc.). All data routes accept a `?run=` query parameter and return data from the appropriate archive file rather than `data/ads.json`.
+
+### API Routes
+
+**`/api/ads`** reads `data/ads.json` (or a named run archive) and calls `ensureImages()` before returning — a utility that checks whether each ad's local image file still exists and, if not, downloads it from the fal.ai CDN URL stored in the entry, writing a stable fallback path (`data/images/{id}-selected.jpg`). This keeps Showcase and Ad Library functional even after the CDN URL expires (~1 hour after generation).
+
+**`/api/images/[id]`** serves image files from disk. It searches `data/ads.json` first, then walks all `data/runs/*.json` archives to find the entry, and falls back to the stable `{id}-selected.jpg` path. This makes images work correctly whether the selected run is the live library or a named archive.
+
+**`/api/generate`** accepts a POST body of `{ audience, goal, hookType }`, validates all three fields against their allowed values, constructs a brief, and spawns `scripts/generate-one.ts` as a child process via `tsx`. The brief is written to the child's stdin as JSON; the completed `CombinedAdEntryV3` is returned via stdout. The route sets `maxDuration = 180` and enforces its own 180-second hard timeout. Using a child process rather than direct imports avoids the module resolution mismatch between the dashboard's `node_modules` and the pipeline's `node_modules` (the pipeline depends on `@anthropic-ai/sdk`, `@fal-ai/client`, etc., which are not installed in the dashboard package).
+
+### Shared Components
+
+**`AdDetailModal`** is a shared component (`dashboard/components/AdDetailModal.tsx`) used by both Showcase and the post-generation flow on the Ad Library page. It renders a full-size `FullMetaCard` (no text truncation) followed by a 4-row × 3-column stats grid: combined/text/visual scores, three visual dimension scores, audience/goal/hook parsed from the brief ID, and estimated cost/cycle count/brief ID. A `useEffect` injects a print stylesheet into `<head>` while the modal is open — `* { visibility: hidden }` with `.print-ad-card { visibility: visible; position: fixed }` — so `window.print()` produces a clean standalone creative without interface chrome. The stylesheet is removed on close.
+
+### Test Coverage
+
+The test suite covers 101 tests across 8 files. The two dashboard-specific files are:
+
+- **`tests/showcase.test.ts`** — 10 tests for pure data transformation logic: `filterImageAds` (excludes entries missing `isCombinedEntry`, `selectedVariant`, or `combinedScore`), `getTopAds` (sorts descending, caps at 12), primary text truncation at 125 characters, and `combinedScoreBadge` color thresholds.
+- **`tests/generate-endpoint.test.ts`** — 8 tests for the generate route handler: 400 responses for each invalid input field and for malformed JSON, brief ID format verification (audience/goal/hookType/timestamp all present in stdin payload), 500 on subprocess stderr-only output, 500 on non-JSON stdout, and 200 with correct parsed result on success. Mocks `child_process.spawn` with a real `EventEmitter`-based child process mock; uses the real `NextResponse` from `dashboard/node_modules` and inspects responses via `.status` and `.json()`.

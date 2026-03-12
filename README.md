@@ -105,11 +105,11 @@ cp .env.example .env
 ### Run
 
 ```bash
-# Generate 75 ads through the full iteration pipeline
+# Generate 75 ads through the full v3 pipeline
 pnpm generate
 
 # Start the dashboard
-pnpm dashboard
+cd dashboard && pnpm dev
 ```
 
 ---
@@ -117,17 +117,18 @@ pnpm dashboard
 ## Testing
 
 ```bash
-pnpm test              # Run all 83 tests
+pnpm test              # Run all 101 tests
 pnpm test:coverage     # Run with coverage report
 ```
 
-The test suite covers four layers:
+The test suite covers six layers across 8 test files:
 
 - **Unit tests** — brief generation, cost estimation, quality trend calculation, JSON parsing edge cases (markdown fences, missing fields, malformed output)
 - **Spec compliance** — reads from `data/ads.json` and asserts the library meets all spec requirements: ≥50 ads, all 5 dimensions scored, scores within 1–10, aggregate matches weighted sum, at least one multi-cycle ad, trend shows improvement
 - **V2 image pipeline** — reads from `data/runs/v2-production.json` and validates: every combined entry has image results and 3 visual dimension scores, combined score = text × 0.6 + image × 0.4, selected variant is the higher-scoring of the two, weights sum to 1.0
 - **Visual evaluator** — mocked Anthropic SDK tests for the visual evaluation module: score shape validation, aggregate computation, threshold boundary behavior, weakest dimension identification, JPEG/PNG media type detection from magic bytes
-- **Architecture** — verifies offer rotation across runs of the same brief, all 24 base brief combinations represented
+- **V3 pipeline** — coherence loop trigger/skip logic, variant 3 replacement rules, copy-side signal detection, copy refinement gating, graceful failure behavior; ratchet pool add/evict/cap/floor rules
+- **Dashboard** — showcase filtering/sorting/truncation logic; `/api/generate` endpoint validation (invalid audience/goal/hookType → 400, subprocess error → 500, success → 200 with parsed entry), mocking `child_process.spawn` and `fs`
 
 ---
 
@@ -162,13 +163,39 @@ Full rationale for all decisions is in [`docs/DECISION_LOG.md`](docs/DECISION_LO
 ## Dashboard
 
 ```bash
-pnpm dashboard
+cd dashboard && pnpm dev
 # Opens at http://localhost:3000
 ```
 
-- **Ad Library** (`/`): Full table of passing ads, sortable by score. Dimension bars use green for ≥8.0, orange for 7.0–7.9, red for <7.0. V2 adds a Combined Score column and image pipeline stats summary.
-- **Trends** (`/trends`): Line chart showing average score by iteration cycle — visual proof the loop improves quality.
-- **Ad Detail**: Click any row for full copy, per-dimension scores with evaluator rationale, and intervention history. V2 adds image thumbnails, combined score breakdown, and visual dimension scores (brand consistency, visual engagement, text-image coherence).
+The dashboard is a Next.js app with four pages, all driven by the same `/api/ads` data route. A run selector in the header lets you switch between saved run archives (`v1-production`, `v2-production`, `v3-production`, `calibration-8.5`).
+
+### Dashboard Features
+
+**Ad Library** (`/`)
+- Full sortable table of all generated ads with combined, text, and visual scores
+- Column tooltips (ⓘ) explaining every metric
+- Pagination — 25 ads per page
+- V3 pipeline badges inline on the combined score cell when the coherence loop or copy refinement loop fired for that ad
+- Click any row to expand a full ad detail panel showing per-dimension scores with evaluator rationale, iteration history, image thumbnail, and visual dimension breakdown
+
+**Quality Trends** (`/trends`)
+- Iteration quality chart: cumulative average score line (carry-forward for converged ads) + per-cohort trajectory
+- Combined score distribution bar chart across the selected run
+- Top hook types ranked by average combined score
+- V3 pipeline activity stat cards: coherence loop activation rate, copy refinement activation rate, improvement rates for both
+
+**Showcase** (`/showcase`)
+- Top 12 ads from the selected run rendered as authentic Meta ad card previews — brand header, primary text with "See more" expansion at 125 characters, full-width 1.91:1 image, domain/headline/description, CTA button, and combined score badge
+- Click the image or CTA button to open a full ad detail modal with a stats grid (combined/text/visual scores, three visual dimensions, audience/goal/hook, cost/cycles/brief ID)
+- Print-ready: the modal injects a print stylesheet that isolates just the ad card — `window.print()` produces a clean standalone creative
+
+**Coherence** (`/coherence`, secondary nav)
+- Per-ad text-image coherence scores sorted ascending, flagging the weakest-coherence ads first
+- Loop activation and improvement status badges per row
+
+### Generate an Ad
+
+Click **Generate Ad** on the Ad Library page to submit a custom brief. Select audience (Anxious Parents, Stressed Students, Comparison Shoppers), goal (Awareness, Conversion), and hook type (Question, Stat, Story, Fear). The full v3 pipeline runs — researcher → writer → editor with coherence loop and copy refinement — and the result appears in ~30–60 seconds. On success, the ad detail modal opens immediately showing the new ad's scores, image, and full copy. The generated ad is appended to `data/ads.json` and appears in the library on next load.
 
 ---
 

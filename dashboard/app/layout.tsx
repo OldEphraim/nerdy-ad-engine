@@ -43,6 +43,9 @@ export default function RootLayout({
                 <Link href="/trends" className="hover:text-zinc-900 transition-colors">
                   Quality Trends
                 </Link>
+                <Link href="/showcase" className="hover:text-zinc-900 transition-colors">
+                  Showcase
+                </Link>
               </div>
               <div className="ml-auto flex items-center gap-5">
                 <Link

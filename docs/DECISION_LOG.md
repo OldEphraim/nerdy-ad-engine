@@ -509,3 +509,29 @@ Raising to 8.5 forces most ads through the full 5-cycle iteration, generating ri
 **Result:** Chart correctly shows nearly flat line for v2-production (74/75 ads converge at cycle 1) and a gently rising line for calibration-8.5 (71 multi-cycle briefs). The mathematical correctness was verified by confirming that at cycle 2 in v2-production, the avg is (74 × final_score + 1 × cycle2_score) / 75, not just the 1 iterating ad.
 
 ---
+
+## Decision 37: Dashboard includes Showcase page rendering ads in authentic Meta ad card format
+
+**Decision:** Added a Showcase tab that renders the top 12 ads from any run as faithful reproductions of the Meta ad card UI — brand header with logo placeholder, primary text with "See more" expansion at 125 characters, full-width 1.91:1 image, headline/description/domain footer, CTA button, and combined score badge. Clicking the image or CTA opens an `AdDetailModal` with full stats.
+
+**Alternatives considered:** Rendering ads as table rows (already covered by Ad Library); rendering as a simple image grid without ad copy context; building a separate export tool rather than an in-dashboard view.
+
+**Rationale:** The spec requires a demo and generated ad samples. Rendering ads in the format they would actually appear in — rather than as table rows or JSON — communicates output quality to both technical and non-technical reviewers immediately. A reviewer can see at a glance whether the image and copy are coherent, whether the headline is compelling, and whether the overall creative is publish-ready. The print-ready modal allows individual ads to be exported as clean standalone creatives without dashboard chrome, useful for sharing with stakeholders.
+
+**Result:** Showcase renders correctly for v2-production and v3-production runs. Pre-image runs (v1-production, calibration-8.5) show a contextual notice ("This run does not have image creatives") rather than empty cards. The "See more" expansion and modal open/close work correctly. Print isolation via dynamically injected stylesheet produces clean output.
+
+---
+
+## Decision 38: /api/generate endpoint enables single-brief generation from the dashboard UI
+
+**Decision:** Added a POST endpoint that accepts `{ audience, goal, hookType }` and runs the full v3 pipeline (researcher → writer → editor with coherence loop and copy refinement) for a single brief on demand. The result is appended to `data/ads.json` and returned to the frontend for immediate display in an `AdDetailModal`.
+
+**Alternatives considered:** Having the UI trigger a batch re-run; exposing a WebSocket endpoint for streaming progress; running the pipeline directly in the Next.js route handler via imports from `src/`.
+
+**Rationale:** A live single-brief generation allows demonstration of the pipeline end-to-end without running the full 75-brief batch. A non-technical reviewer can select parameters and watch a real ad generate in ~30–60 seconds, which is more compelling than showing pre-computed results alone. WebSocket streaming was ruled out — it adds significant complexity and the generation time (30–60s) is acceptable for a synchronous response. Direct imports from `src/` were ruled out because the dashboard's `node_modules` doesn't include `@anthropic-ai/sdk`, `@fal-ai/client`, or `dotenv` — a child process spawning `tsx scripts/generate-one.ts` from the project root cleanly solves the module resolution boundary.
+
+**Tradeoff:** Single-brief generation does not benefit from a warm ratchet pool the way batch runs do. The ratchet reads whatever is currently in `data/ratchet/top-ads.json`, which is populated from previous runs. The researcher agent will fetch fresh competitive intelligence (no cache hit on the first call) or use the `data/reference-ads.json` fallback if the API is unavailable. Neither of these is a correctness issue — the output is a valid v3 entry — but the quality ceiling may be slightly lower than a mid-run batch brief.
+
+**Result:** Endpoint works. Generation takes 30–60 seconds depending on image pipeline activity. Input validation returns descriptive 400 errors for each invalid field. Error handling returns 500 with the subprocess stderr message on pipeline failure. The `AdDetailModal` opens automatically on success, showing the new ad's scores, image, and full copy before the library refreshes.
+
+---

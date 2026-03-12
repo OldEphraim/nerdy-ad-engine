@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import * as fs from "fs";
 import * as path from "path";
+import { ensureImages } from "../../../lib/ensure-images";
 
 const THRESHOLD = 7.0;
 
@@ -31,6 +32,7 @@ interface VisualEval {
 }
 
 interface ImageResult {
+  url?: string;        // fal.ai CDN URL — used by ensure-images to re-download if localPath is missing
   localPath: string;
   width: number;
   height: number;
@@ -94,6 +96,11 @@ export async function GET(request: NextRequest) {
 
   const raw = fs.readFileSync(adsPath, "utf-8");
   const ads = JSON.parse(raw) as AdEntry[];
+
+  // Ensure image files exist on disk; download from CDN URL if missing.
+  // Only fires when files are actually absent — subsequent requests are instant.
+  const imagesDir = path.resolve(dataDir, "images");
+  await ensureImages(ads, adsPath, imagesDir);
 
   // Always evaluate passing against 7.0, not the stored passesThreshold
   const passingCount = ads.filter((a) => a.evaluation.aggregateScore >= THRESHOLD).length;
