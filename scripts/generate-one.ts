@@ -9,6 +9,11 @@ import { edit } from '../src/agents/editor.js';
 import { appendToLibrary, updateRatchetPool } from '../src/output/library.js';
 
 async function main() {
+  // Redirect console.log to stderr so pipeline progress messages don't
+  // contaminate stdout. The route reads stdout and expects pure JSON.
+  console.log = (...args: unknown[]) =>
+    process.stderr.write(args.map(String).join(" ") + "\n");
+
   const chunks: Buffer[] = [];
   for await (const chunk of process.stdin) {
     chunks.push(chunk as Buffer);
