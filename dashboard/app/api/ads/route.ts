@@ -82,12 +82,21 @@ export async function GET(request: NextRequest) {
   const run = request.nextUrl.searchParams.get("run");
   const dataDir = path.resolve(process.cwd(), "..", "data");
 
-  // Determine which file to load
+  // Determine which file to load.
+  // "Latest run" (no param): prefer data/ads.json if present (local dev),
+  // otherwise fall back to the most recently modified file in data/runs/
+  // so deployed environments — where ads.json is gitignored — still show something.
   let adsPath: string;
   if (run) {
     adsPath = path.resolve(dataDir, "runs", `${run}.json`);
   } else {
-    adsPath = path.resolve(dataDir, "ads.json");
+    const localAds = path.resolve(dataDir, "ads.json");
+    if (fs.existsSync(localAds)) {
+      adsPath = localAds;
+    } else {
+      const latest = latestRunPath(dataDir);
+      adsPath = latest ?? localAds;
+    }
   }
 
   if (!fs.existsSync(adsPath)) {
@@ -183,8 +192,19 @@ function listRuns(dataDir: string): string[] {
   if (!fs.existsSync(runsDir)) return [];
   return fs.readdirSync(runsDir)
     .filter((f) => f.endsWith(".json"))
-    .map((f) => f.replace(/\.json$/, ""))
-    .sort();
+    .map((f) => ({ name: f.replace(/\.json$/, ""), mtimeMs: fs.statSync(path.join(runsDir, f)).mtimeMs }))
+    .sort((a, b) => b.mtimeMs - a.mtimeMs)
+    .map((r) => r.name);
+}
+
+function latestRunPath(dataDir: string): string | null {
+  const runsDir = path.resolve(dataDir, "runs");
+  if (!fs.existsSync(runsDir)) return null;
+  const files = fs.readdirSync(runsDir)
+    .filter((f) => f.endsWith(".json"))
+    .map((f) => ({ path: path.join(runsDir, f), mtimeMs: fs.statSync(path.join(runsDir, f)).mtimeMs }))
+    .sort((a, b) => b.mtimeMs - a.mtimeMs);
+  return files[0]?.path ?? null;
 }
 
 const VISUAL_DIMS = ["brand_consistency", "visual_engagement", "text_image_coherence"] as const;
