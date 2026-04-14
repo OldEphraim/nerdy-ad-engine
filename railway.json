@@ -1,0 +1,15 @@
+{
+  "build": {
+    "builder": "NIXPACKS",
+    "nixpacksPlan": {
+      "phases": {
+        "setup": {
+          "nixPkgs": ["nodejs_22", "pnpm"]
+        }
+      }
+    }
+  },
+  "deploy": {
+    "startCommand": "cd dashboard && pnpm install && pnpm build && pnpm start"
+  }
+}
